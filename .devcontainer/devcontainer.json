@@ -1,1 +1,21 @@
+{
+  "name": "occt-dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
 
+  "postCreateCommand": "pip install -r backend/requirements.txt",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",       // Python linting & debugging
+        "ms-python.vscode-pylance", // Language server
+        "ms-azuretools.vscode-docker", // If you test with Docker later
+        "eamodio.gitlens"         // (optional) Git history in VSCode
+      ]
+    }
+  },
+
+  "forwardPorts": [5000],
+
+  "remoteUser": "vscode"
+}
