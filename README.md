@@ -1,1 +1,1 @@
-# occt-tool
+# OCCT tool - Operating System Compliance Control Tool
