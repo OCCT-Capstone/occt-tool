@@ -1,0 +1,190 @@
+{
+  "Reduce OS-level vulnerabilities": [
+    {
+      "Control ID": "AU-001",
+      "CC SFR": "FIA_UAU.1",
+      "Title": "Timing of authentication",
+      "Windows Command / Source": "Group Policy -> Interactive logon: Require authentication before access",
+      "Expected Value": "Enabled",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "AU-002",
+      "CC SFR": "FIA_AFL.1",
+      "Title": "Authentication failure handling",
+      "Windows Command / Source": "secedit /export -> LockoutBadCount",
+      "Expected Value": "≤ 5 invalid attempts",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "MOF-001",
+      "CC SFR": "FMT_MOF.1",
+      "Title": "Management of security functions",
+      "Windows Command / Source": "Local Security Policy -> User Rights Assignment",
+      "Expected Value": "Only authorised admins can change security settings",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "AU-005",
+      "CC SFR": "FIA_UAU.5",
+      "Title": "Multiple authentication mechanisms",
+      "Windows Command / Source": "Windows Hello / Smart Card / MFA Policy",
+      "Expected Value": "MFA enabled for privileged accounts",
+      "Severity": "High"
+    }
+  ],
+
+  "Detect suspicious/malicious activity": [
+    {
+      "Control ID": "LG-001",
+      "CC SFR": "FAU_GEN.1",
+      "Title": "Audit data generation",
+      "Windows Command / Source": "auditpol /get/category:*",
+      "Expected Value": "Audit logon, account management, policy changes enabled",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "LG-002",
+      "CC SFR": "FAU_SAR.1",
+      "Title": "Audit review",
+      "Windows Command / Source": "Event Viewer Security Log",
+      "Expected Value": "Accessible to authorised security roles only",
+      "Severity": "Medium"
+    },
+    {
+      "Control ID": "LG-004",
+      "CC SFR": "FAU_GEN.2",
+      "Title": "User identity association",
+      "Windows Command / Source": "Event Viewer -> Logon Events (4624/4634)",
+      "Expected Value": "All events tied to user IDs",
+      "Severity": "High"
+    }
+  ],
+
+  "Provide visibility into privileged accounts": [
+    {
+      "Control ID": "AC-001",
+      "CC SFR": "FDP_ACC.1",
+      "Title": "Subset access control",
+      "Windows Command / Source": "Get-LocalGroupMember -Group \"Administrators\"",
+      "Expected Value": "Only approved accounts in admin group",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "SR-001",
+      "CC SFR": "FMT_SMR.1",
+      "Title": "Security roles",
+      "Windows Command / Source": "Local Security Policy -> User Rights Assignment",
+      "Expected Value": "Roles assigned per policy",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "AC-002",
+      "CC SFR": "FDP_ACC.2",
+      "Title": "Complete access control",
+      "Windows Command / Source": "Local Security Policy -> Access Control Policies",
+      "Expected Value": "All access requests logged & controlled",
+      "Severity": "High"
+    }
+  ],
+
+  "Generate alerts & remediation": [
+    {
+      "Control ID": "LG-003",
+      "CC SFR": "FAU_STG.4",
+      "Title": "Prevention of audit data loss",
+      "Windows Command / Source": "Group Policy -> Audit: Shut down system immediately if unable to log security audits",
+      "Expected Value": "Enabled",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "LG-006",
+      "CC SFR": "FAU_STG.3",
+      "Title": "Audit storage failure action",
+      "Windows Command / Source": "Group Policy -> Audit: Retain log",
+      "Expected Value": "Alerts triggered when log full",
+      "Severity": "High"
+    }
+  ],
+
+  "Display dashboards & audit trails": [
+    {
+      "Control ID": "TM-001",
+      "CC SFR": "FPT_STM.1",
+      "Title": "Reliable time stamps",
+      "Windows Command / Source": "w32tm /query /status",
+      "Expected Value": "Synced to trusted time source",
+      "Severity": "Medium"
+    },
+    {
+      "Control ID": "TS-001",
+      "CC SFR": "FPT_TST.1",
+      "Title": "TSF testing",
+      "Windows Command / Source": "Windows Security -> Device Security -> Secure Boot status",
+      "Expected Value": "Enabled",
+      "Severity": "High"
+    },
+    {
+      "Control ID": "LG-005",
+      "CC SFR": "FAU_SAR.3",
+      "Title": "Selectable audit review",
+      "Windows Command / Source": "Event Viewer -> Custom Views",
+      "Expected Value": "Filters applied by user/role",
+      "Severity": "Medium"
+    },
+    {
+      "Control ID": "NTW-002",
+      "CC SFR": "FPT_ITC.1",
+      "Title": "Import of trusted data",
+      "Windows Command / Source": "Event Forwarding / SIEM ingestion rules",
+      "Expected Value": "Only validated sources accepted",
+      "Severity": "Medium"
+    }
+  ],
+
+  "Enforce unique identification": [
+    {
+      "Control ID": "AU-003",
+      "CC SFR": "FIA_UID.2",
+      "Title": "User identification before any action",
+      "Windows Command / Source": "Group Policy -> Interactive logon: Do not allow anonymous SID",
+      "Expected Value": "Enabled",
+      "Severity": "High"
+    }
+  ],
+
+  "Reduce misuse risk": [
+    {
+      "Control ID": "AU-004",
+      "CC SFR": "FTA_MCS.1",
+      "Title": "Limit concurrent sessions",
+      "Windows Command / Source": "Group Policy -> Security Options -> Restrict concurrent logons",
+      "Expected Value": "Max 1 session per user",
+      "Severity": "Medium"
+    }
+  ],
+
+  "Remediation & Compliance enforcement": [
+    {
+      "Control ID": "SR-002",
+      "CC SFR": "FMT_MTD.1",
+      "Title": "Management of TSF data",
+      "Windows Command / Source": "Group Policy -> Security Options -> Restrict concurrent logons",
+      "Expected Value": "Only admins can modify security data",
+      "Severity": "High"
+    }
+  ],
+
+  "Real-time dashboards & secure comms": [
+    {
+      "Control ID": "NTW-001",
+      "CC SFR": "FPT_TDC.1",
+      "Title": "Trusted channel for audit data",
+      "Windows Command / Source": "TLS for Event Forwarding / Sysmon logs",
+      "Expected Value": "Secured channel enabled",
+      "Severity": "High"
+    }
+  ]
+}
+
+  
