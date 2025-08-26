@@ -1,19 +1,27 @@
+# backend/app.py
+import os
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 
-# Keep frontend flat: serve templates + static from the same folder
 app = Flask(
     __name__,
+    instance_relative_config=True,        # enables app.instance_path = <project>/instance
     template_folder="../frontend",
     static_folder="../frontend",
-    static_url_path=""   # exposes static at site root so ./style.css works
+    static_url_path=""
 )
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///occt.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Ensure instance/ exists
+os.makedirs(app.instance_path, exist_ok=True)
+
+# Point DB to instance/occt.db (absolute path so cwd doesn't matter)
+db_path = os.path.join(app.instance_path, "occt.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db = SQLAlchemy(app)
 
-@app.route("/")
+@app.get("/")
 def index():
     return render_template("index.html")
 
