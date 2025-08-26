@@ -25,6 +25,12 @@ db = SQLAlchemy(app)
 def index():
     return render_template("index.html")
 
+# backend/app.py
+@app.get("/results")
+def results_page():
+    return render_template("results.html")
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
