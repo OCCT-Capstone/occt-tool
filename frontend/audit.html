@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OCCT – Audit Trail</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='audit.css') }}">
+</head>
+<body class="dash-body">
+
+  <!-- Top Nav -->
+  <nav class="topbar">
+    <div class="brand">OCCT</div>
+    <ul class="navlinks">
+      <li><a href="/">Dashboard</a></li>
+      <li class="active"><a href="/audit">Audit</a></li>
+      <li><a href="/remediation">Remediation</a></li>
+      <li><a href="/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+
+    <h1 class="page-title">Audit Trail</h1>
+
+    <!-- Filters / Tools -->
+    <section class="toolbar card">
+      <div class="field">
+        <label for="q">Search</label>
+        <input id="q" class="input" type="text" placeholder="Search description, control, account..." />
+      </div>
+
+      <div class="field">
+        <label>Date from</label>
+        <input id="dateFrom" class="input" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Date to</label>
+        <input id="dateTo" class="input" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Category</label>
+        <div class="chips">
+          <button class="chip" data-cat="System">System</button>
+          <button class="chip" data-cat="Security">Security</button>
+          <button class="chip" data-cat="Account">Account</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Outcome</label>
+        <select id="outcome" class="input select">
+          <option value="">All</option>
+          <option value="Passed">Passed</option>
+          <option value="Failed">Failed</option>
+        </select>
+      </div>
+
+      <div class="tools">
+        <button id="clearBtn" class="btn secondary">Clear</button>
+        <button id="exportBtn" class="btn">Export CSV</button>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="table-card card">
+      <div class="table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th data-sort="time">Time</th>
+              <th data-sort="category">Category</th>
+              <th data-sort="control">Control</th>
+              <th data-sort="outcome">Outcome</th>
+              <th data-sort="account">Account/Host</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody">
+            <!-- JS renders rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="count"><span id="resultCount">0</span> results</div>
+        <div class="pager">
+          <button id="prevPage" class="btn secondary" disabled>Prev</button>
+          <span id="pageInfo">1 / 1</span>
+          <button id="nextPage" class="btn secondary" disabled>Next</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script defer src="{{ url_for('static', filename='audit.js') }}"></script>
+</body>
+</html>

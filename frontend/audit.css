@@ -1,0 +1,97 @@
+/* --- Page title --- */
+.page-title{
+  margin: .4rem 0 1rem;
+}
+
+/* --- Toolbar --- */
+.toolbar{
+  display: grid;
+  grid-template-columns: 2fr repeat(2, 1fr) 2fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+@media (max-width: 1000px){
+  .toolbar{ grid-template-columns: 1fr 1fr; }
+}
+.field{ display: flex; flex-direction: column; gap: .4rem; }
+.field label{ color: var(--muted); font-size: .9rem; }
+.input{
+  background: #fff;
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  padding: .55rem .7rem;
+  outline: none;
+}
+.select{ padding-right: 2rem; }
+.tools{ display:flex; gap:.6rem; justify-self:end; align-items:center; }
+
+/* chips */
+.chips{ display: flex; gap: .4rem; flex-wrap: wrap; }
+.chip{
+  background: #eef2ff;
+  border: 1px solid #e5e7eb;
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #1f2937;
+  cursor: pointer;
+}
+.chip.active{ background: #dbeafe; border-color:#bfdbfe; }
+
+/* --- Table --- */
+.table-card{ margin-top: .2rem; }
+.table-wrap{
+  overflow: auto;
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+}
+.audit-table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.audit-table thead th{
+  position: sticky; top: 0;
+  background: #f8fafc;
+  text-align: left;
+  font-weight: 700;
+  padding: .8rem .9rem;
+  border-bottom: 1px solid var(--ring);
+  cursor: pointer; /* sort hint */
+}
+.audit-table tbody td{
+  padding: .75rem .9rem;
+  border-bottom: 1px dashed var(--ring);
+  vertical-align: top;
+}
+.audit-table tbody tr:hover{
+  background: #fbfdff;
+}
+
+/* badges & outcome */
+.badge{
+  display:inline-block; padding: .25rem .6rem; border-radius: 999px;
+  font-weight:600; font-size: .85rem;
+}
+.badge.sys{ background: rgba(245,158,11,.18); color:#92400e; }
+.badge.sec{ background: rgba(59,130,246,.18); color:#1e40af; }
+.badge.acc{ background: rgba(16,185,129,.18); color:#065f46; }
+
+.outcome{
+  display:inline-block; padding: .25rem .6rem; border-radius: 6px; font-weight:700;
+}
+.outcome.pass{ background: rgba(16,185,129,.15); color:#065f46; }
+.outcome.fail{ background: rgba(239,68,68,.15); color:#7f1d1d; }
+
+/* footer */
+.table-footer{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:.8rem .2rem;
+}
+.count{ color: var(--muted); }
+
+/* buttons reuse */
+.btn{ display:inline-block; padding:.55rem .9rem; border-radius:10px; background:#2563eb; color:#fff; border:0; cursor:pointer; }
+.btn.secondary{ background:#e5e7eb; color:#111827; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }

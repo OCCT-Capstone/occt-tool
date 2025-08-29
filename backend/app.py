@@ -25,10 +25,17 @@ db = SQLAlchemy(app)
 def index():
     return render_template("index.html")
 
-# backend/app.py
-@app.get("/results")
-def results_page():
-    return render_template("results.html")
+@app.get("/audit")
+def audit_page():
+    return render_template("audit.html")
+
+@app.get("/remediation")
+def remediation_page():
+    return render_template("remediation.html")
+
+@app.get("/settings")
+def settings_page():
+    return render_template("settings.html")
 
 
 if __name__ == "__main__":

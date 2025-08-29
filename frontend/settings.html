@@ -3,23 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>OCCT – Dashboard</title>
+  <title>OCCT – Settings</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="dash-body">
 
   <!-- Top Nav -->
-    <nav class="topbar">
+  <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
-        <li class="active"><a href="/">Dashboard</a></li>
-        <li><a href="/audit">Audit</a></li>
-        <li><a href="/remediation">Remediation</a></li>
-        <li><a href="/settings">Settings</a></li>
+      <li><a href="/">Dashboard</a></li>
+      <li><a href="/audit">Audit</a></li>
+      <li><a href="/remediation">Remediation</a></li>
+      <li class="active"><a href="/settings">Settings</a></li>
     </ul>
-    </nav>
-
+  </nav>
 
   <main class="container">
 
