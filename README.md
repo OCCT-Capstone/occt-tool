@@ -54,7 +54,7 @@ pip install -r requirements.txt
 From the project root, run the backend server:
 
 ```bash
-python backend/app.py
+python -m backend.app
 ```
 
 The Flask server will start and be available at:
