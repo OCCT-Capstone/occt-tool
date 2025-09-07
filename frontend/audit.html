@@ -8,8 +8,8 @@
 
   <!-- Favicon & styles -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='audit.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/audit.css') }}">
 </head>
 
 <body class="dash-body">
@@ -108,6 +108,6 @@
   </main>
 
   <!-- Page logic (filters, sort, CSV) -->
-  <script defer src="{{ url_for('static', filename='audit.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/audit.js') }}"></script>
 </body>
 </html>
