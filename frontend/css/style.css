@@ -279,3 +279,85 @@ footer {
   gap: 1.4rem;
   padding: 1.6rem 1.8rem;
 }
+
+/* Stack each field and center its contents */
+.settings-card .field{
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  text-align: center;
+}
+
+/* The "row" field (Theme switch) should also stack */
+.settings-card .field.row{
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Inputs/selects centered with a comfortable max width */
+.settings-card .input,
+.settings-card .select{
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* Helper text centered */
+.settings-card .help{
+  text-align: center;
+}
+
+/* Buttons centered and nicely spaced */
+.settings-card .actions-row{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .8rem;
+  flex-wrap: wrap;
+}
+
+/* Keep horizontal separators narrow and centered */
+.settings-card .sep{
+  width: min(640px, 100%);
+  margin: .2rem auto .4rem;
+}
+
+/* ===== Fix Compliance Over Time alignment ===== */
+.bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 44px; /* fixed column width */
+  gap: 16px;               /* consistent spacing */
+  align-items: end;
+  height: 180px;
+  padding: 0.5rem 0.6rem 0.2rem;
+  border: 1px dashed var(--ring);
+  border-radius: 12px;
+}
+
+.barcol {
+  height: 100%; /* allow % heights to fill full chart */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.axis-x {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 44px;
+  gap: 16px;
+  justify-content: start;
+  padding: 0.4rem 0.6rem 0; /* match .bars padding */
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.axis-x span {
+  text-align: center;
+}

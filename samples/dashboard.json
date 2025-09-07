@@ -1,0 +1,13 @@
+{
+  "summary": { "non_compliant_percent": 48 },
+  "monthly": [
+    { "month": "Jan", "compliant": 78, "noncompliant": 22 },
+    { "month": "Feb", "compliant": 88, "noncompliant": 12 },
+    { "month": "Mar", "compliant": 80, "noncompliant": 20 },
+    { "month": "Apr", "compliant": 72, "noncompliant": 28 },
+    { "month": "May", "compliant": 68, "noncompliant": 32 },
+    { "month": "Jun", "compliant": 75, "noncompliant": 25 },
+    { "month": "Jul", "compliant": 82, "noncompliant": 18 },
+    { "month": "Aug", "compliant": 79, "noncompliant": 21 }
+  ]
+}

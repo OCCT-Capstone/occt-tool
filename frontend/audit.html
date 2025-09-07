@@ -6,11 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Audit Trail</title>
 
+  <!-- Global helpers (defines window.occt.api) -->
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
   <!-- Favicon & styles -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/audit.css') }}">
-  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 </head>
 
 <body class="dash-body">
@@ -70,8 +72,8 @@
 
       <!-- Actions -->
       <div class="tools">
-        <button id="clearBtn" class="btn secondary">Clear</button>
-        <button id="exportBtn" class="btn">Export CSV</button>
+        <button id="clearBtn" class="btn secondary" type="button">Clear</button>
+        <button id="exportBtn" class="btn" type="button">Export CSV</button>
       </div>
     </section>
 
@@ -100,9 +102,9 @@
       <div class="table-footer">
         <div class="count"><span id="resultCount">0</span> results</div>
         <div class="pager">
-          <button id="prevPage" class="btn secondary" disabled>Prev</button>
+          <button id="prevPage" class="btn secondary" type="button" disabled>Prev</button>
           <span id="pageInfo">1 / 1</span>
-          <button id="nextPage" class="btn secondary" disabled>Next</button>
+          <button id="nextPage" class="btn secondary" type="button" disabled>Next</button>
         </div>
       </div>
     </section>

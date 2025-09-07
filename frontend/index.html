@@ -6,10 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Dashboard</title>
 
+  <!-- Global site helpers (exposes window.occt.api) -->
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
   <!-- Favicon & global styles (served by Flask static) -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 </head>
 
 <body class="dash-body">
@@ -18,7 +20,6 @@
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
-      <!-- Use route paths; you can swap for url_for(...) later if you convert to Jinja template inheritance -->
       <li class="active"><a href="/">Dashboard</a></li>
       <li><a href="/audit">Audit</a></li>
       <li><a href="/remediation">Remediation</a></li>
@@ -47,7 +48,7 @@
             <path
               id="donut-value"
               class="donut-value"
-              stroke-dasharray="48, 100"
+              stroke-dasharray="0, 100"
               d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"
             />
             <!-- Cap (visual end point) -->
@@ -56,7 +57,7 @@
 
           <!-- Donut center content -->
           <div class="donut-center">
-            <div class="donut-number" id="nonCompliantPct">48%</div>
+            <div class="donut-number" id="nonCompliantPct">—</div>
             <div class="donut-sub">Non-Compliant</div>
           </div>
         </div>
@@ -65,24 +66,24 @@
       <!-- Audit Checks (numeric KPIs) -->
       <div class="card">
         <h3>Audit Checks</h3>
-        <div class="kpi-big">152</div>
+        <div class="kpi-big" id="kpiTotal">—</div>
         <div class="kpi-row">
-          <span class="muted">Passed</span><span>74</span>
+          <span class="muted">Passed</span><span id="kpiPassed">—</span>
         </div>
         <div class="kpi-row">
-          <span class="muted">Failed</span><span>78</span>
+          <span class="muted">Failed</span><span id="kpiFailed">—</span>
         </div>
       </div>
 
       <!-- Account Activity (numeric KPIs) -->
       <div class="card">
         <h3>Account Activity</h3>
-        <div class="kpi-big">5</div>
+        <div class="kpi-big" id="kpiIssues">—</div>
         <div class="kpi-row">
-          <span class="muted">Issues Detected</span><span>5</span>
+          <span class="muted">Issues Detected</span><span id="kpiIssuesDetail">—</span>
         </div>
         <div class="kpi-row">
-          <span class="muted">8 accounts</span><span></span>
+          <span class="muted">Accounts</span><span id="kpiAccounts">—</span>
         </div>
       </div>
     </section>
@@ -103,52 +104,19 @@
         <!-- Bars placeholder; JS injects columns -->
         <div class="bars" id="barChart"></div>
 
-        <!-- X-axis labels -->
-        <div class="axis-x">
-          <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span>
-        </div>
+        <!-- X-axis labels (populated from data) -->
+        <div class="axis-x" id="axisX"></div>
       </div>
 
       <!-- Audit Log (preview) -->
       <div class="card">
         <h3>Audit Log</h3>
 
-        <!-- Lightweight table-like rows -->
-        <div class="table">
-          <div class="thead">
-            <div>Time</div><div>Category</div><div>Description</div>
-          </div>
-
-          <!-- Static placeholder rows -->
-          <div class="trow">
-            <div>17:45</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Alertel repaits</div>
-          </div>
-          <div class="trow">
-            <div>16:20</div>
-            <div><span class="badge sec">Security</span></div>
-            <div>Susplitt sking</div>
-          </div>
-          <div class="trow">
-            <div>14:05</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Invunjate attack</div>
-          </div>
-          <div class="trow">
-            <div>12:37</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Debradrga rulst</div>
-          </div>
-          <div class="trow">
-            <div>12:30</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Traffic robinds</div>
-          </div>
-        </div>
+        <!-- Container JS will fill -->
+        <div class="table" id="auditPreview"></div>
 
         <!-- Link to full audit page -->
-        <a class="link" href="/audit">42 recent</a>
+        <a class="link" href="/audit">See all</a>
       </div>
     </section>
 
@@ -156,38 +124,109 @@
 
   <!-- ========== Page Scripts (local-only, no external deps) ========== -->
   <script>
-    // ---- Mocked data (swap with API payload later) ----
-    const nonCompliantPercent = 48; // drives donut
-    const monthly = [
-      { month: 'Jan', compliant: 78, noncompliant: 22 },
-      { month: 'Feb', compliant: 88, noncompliant: 12 },
-      { month: 'Mar', compliant: 80, noncompliant: 20 },
-      { month: 'Apr', compliant: 72, noncompliant: 28 },
-    ];
+    (async () => {
+      // ---------- Helpers ----------
+      const api = (window.occt && window.occt.api)
+        ? window.occt.api
+        : (p => '/api/sample' + p); // fallback to samples if site.js not present
 
-    // ---- Donut setup: use stroke-dasharray to represent percentage ----
-    const donut = document.getElementById('donut-value');
-    donut.setAttribute('stroke-dasharray', `${nonCompliantPercent}, 100`);
-    document.getElementById('nonCompliantPct').textContent = nonCompliantPercent + '%';
+      function escapeHTML(s = '') {
+        return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      }
+      function fmtTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      function badgeClass(cat) {
+        return cat === 'System' ? 'sys' : cat === 'Security' ? 'sec' : 'acc';
+      }
 
-    // ---- Bars: simple stacked columns (green + red) ----
-    const barChart = document.getElementById('barChart');
-    monthly.forEach(pt => {
-      const col = document.createElement('div');
-      col.className = 'barcol';
+      // ---------- Fetch both dashboard + audit preview ----------
+      try {
+        const [dashRes, auditRes] = await Promise.all([
+          fetch(api('/dashboard')),
+          fetch(api('/audit'))
+        ]);
+        if (!dashRes.ok)  throw new Error('Dashboard HTTP ' + dashRes.status);
+        if (!auditRes.ok) throw new Error('Audit HTTP ' + auditRes.status);
 
-      const green = document.createElement('div');
-      green.className = 'bar green';
-      green.style.height = pt.compliant + '%';
+        const dash  = await dashRes.json();
+        const audit = await auditRes.json();
 
-      const red = document.createElement('div');
-      red.className = 'bar red';
-      red.style.height = pt.noncompliant + '%';
+        // ===== Donut =====
+        const pct = Number(dash?.summary?.non_compliant_percent ?? 0);
+        document.getElementById('donut-value')
+          .setAttribute('stroke-dasharray', `${pct}, 100`);
+        document.getElementById('nonCompliantPct').textContent = `${pct}%`;
 
-      col.appendChild(green);
-      col.appendChild(red);
-      barChart.appendChild(col);
-    });
+        // ===== Bars =====
+        const monthly = Array.isArray(dash?.monthly) ? dash.monthly : [];
+        const barChart = document.getElementById('barChart');
+        const axisX = document.getElementById('axisX');
+        barChart.innerHTML = '';
+        axisX.innerHTML = '';
+
+        monthly.forEach(pt => {
+          const col = document.createElement('div');
+          col.className = 'barcol';
+
+          const green = document.createElement('div');
+          green.className = 'bar green';
+          green.style.height = (Number(pt.compliant) || 0) + '%';
+
+          const red = document.createElement('div');
+          red.className = 'bar red';
+          red.style.height = (Number(pt.noncompliant) || 0) + '%';
+
+          col.appendChild(green);
+          col.appendChild(red);
+          barChart.appendChild(col);
+
+          const tick = document.createElement('span');
+          tick.textContent = pt.month || '';
+          axisX.appendChild(tick);
+        });
+
+        // ===== KPIs (optional demo values using audit list) =====
+        // You can replace this with real totals from your backend when available.
+        const total = Array.isArray(audit) ? audit.length : 0;
+        const passed = Array.isArray(audit) ? audit.filter(r => r.outcome === 'Passed').length : 0;
+        const failed = total - passed;
+
+        document.getElementById('kpiTotal').textContent = total || '—';
+        document.getElementById('kpiPassed').textContent = passed || '0';
+        document.getElementById('kpiFailed').textContent = failed || '0';
+        document.getElementById('kpiIssues').textContent = failed || '0';
+        document.getElementById('kpiIssuesDetail').textContent = failed ? String(failed) : '0';
+        // If you track distinct accounts, set kpiAccounts accordingly
+        const accounts = Array.isArray(audit)
+          ? new Set(audit.map(r => r.account).filter(Boolean)).size
+          : 0;
+        document.getElementById('kpiAccounts').textContent = accounts || '—';
+
+        // ===== Audit preview (top 5 rows) =====
+        const preview = document.getElementById('auditPreview');
+        const top = (Array.isArray(audit) ? audit : []).slice(0, 5);
+
+        preview.innerHTML = `
+          <div class="thead">
+            <div>Time</div><div>Category</div><div>Description</div>
+          </div>
+          ${top.map(r => `
+            <div class="trow">
+              <div>${fmtTime(r.time)}</div>
+              <div><span class="badge ${badgeClass(r.category)}">${escapeHTML(r.category || '')}</span></div>
+              <div>${escapeHTML(r.description || '')}</div>
+            </div>
+          `).join('')}
+        `;
+      } catch (err) {
+        console.error('Dashboard load failed:', err);
+        // Minimal fallback so the page still looks okay
+        document.getElementById('nonCompliantPct').textContent = '—';
+      }
+    })();
   </script>
 </body>
 </html>

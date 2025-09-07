@@ -6,12 +6,12 @@
   <title>OCCT – Settings</title>
 
   <!-- Load helpers BEFORE CSS to prevent theme flash -->
-  <script src="{{ url_for('static', filename='site.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 </head>
+
 <body class="dash-body">
 
   <!-- Top Nav -->
@@ -26,6 +26,8 @@
   </nav>
 
   <main class="container">
+    <h1 class="page-title">Settings</h1>
+    <br></br>
 
     <form id="settingsForm" class="card settings-card">
       <!-- Appearance -->
