@@ -25,6 +25,8 @@ https://github.com/OCCT-Capstone/occt-tool.git
 
 ## 🔹 2. Create a Virtual Environment
 
+Open the built-in terminal in VS Code:
+
 **macOS / Linux**
 ```bash
 python3 -m venv env
@@ -59,7 +61,7 @@ python -m backend.app
 
 The Flask server will start and be available at:
 
-👉 http://localhost:5000 OR http://127.0.0.1:5000
+👉 http://127.0.0.1:5000
 
 ---
 
