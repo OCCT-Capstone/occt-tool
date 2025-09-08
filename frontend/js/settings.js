@@ -57,16 +57,30 @@
     showToast('Defaults restored');
   }
 
-  function logoutPlaceholder() {
-    showToast('Logout not implemented yet');
+  // ---- Real logout ----
+  async function logoutNow() {
+    try {
+      const res = await fetch('/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin', // include session cookie
+        headers: { 'X-Requested-With': 'fetch' }
+      });
+      // Even if non-200, clear client state and go to /login
+    } catch (_) {
+      // ignore network errors; still navigate away
+    } finally {
+      // Optional: nuke any local client state as well
+      // localStorage.clear(); // uncomment if you want a totally clean slate
+      window.location.replace('/login');
+    }
   }
 
-  // Wire events
+  // ---- Wire events ----
   themeDark?.addEventListener('change', applyThemeFromToggle);
   form?.addEventListener('submit', save);
   resetBtn?.addEventListener('click', resetAll);
-  logoutBtn?.addEventListener('click', logoutPlaceholder);
+  logoutBtn?.addEventListener('click', logoutNow); // <-- single, correct handler
 
-  // Initial
+  // ---- Initial ----
   load();
 })();

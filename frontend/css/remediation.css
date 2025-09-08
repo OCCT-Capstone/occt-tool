@@ -1,0 +1,10 @@
+/* Remediation page: list of hints in cards */
+
+.rem-wrap{ display:grid; gap:1rem; }
+.rem-card{ padding:1rem 1.2rem; border:1px solid var(--ring); border-radius:12px; background:var(--card); box-shadow:var(--shadow); }
+.rem-h{ display:flex; align-items:center; gap:.6rem; margin-bottom:.4rem; }
+.rem-title{ font-weight:800; }
+.rem-badges{ display:flex; gap:.4rem; flex-wrap:wrap; }
+.rem-badge{ padding:.2rem .5rem; border-radius:999px; font-weight:700; font-size:.75rem; background:#eef2ff; border:1px solid #e5e7eb; }
+.rem-body{ color:var(--text); }
+.rem-foot{ margin-top:.6rem; color:var(--muted); font-size:.9rem; }

@@ -8,6 +8,7 @@
     { "month": "May", "compliant": 68, "noncompliant": 32 },
     { "month": "Jun", "compliant": 75, "noncompliant": 25 },
     { "month": "Jul", "compliant": 82, "noncompliant": 18 },
-    { "month": "Aug", "compliant": 79, "noncompliant": 21 }
+    { "month": "Aug", "compliant": 79, "noncompliant": 21 },
+    { "month": "Sep", "compliant": 85, "noncompliant": 15 }
   ]
 }

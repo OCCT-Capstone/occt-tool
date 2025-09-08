@@ -1,0 +1,91 @@
+/* Center the login card on the page */
+.login-wrap{
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  background: var(--bg, #f5f7fa);
+}
+
+/* Card sizing + alignment */
+.login-card{
+  width: min(500px, 100%);
+  padding: 1.6rem 1.4rem 1.2rem;
+  text-align: center;
+}
+
+/* Logo above the title */
+.login-logo{
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 0.8rem;
+}
+
+/* Title + subtext */
+.login-title{
+  margin-bottom: .2rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.login-sub{
+  color: var(--muted, #6b7280);
+  margin-bottom: 1rem;
+  font-size: .95rem;
+}
+
+/* Fields */
+.login-card .field{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    text-align: left;
+    margin: .2rem 0 .9rem;
+}
+.login-card .input{
+  width: 50%;
+  border: 1px solid var(--ring, #e5e7eb);
+  border-radius: 10px;
+  padding: .6rem .75rem;
+  outline: none;
+  background: #fff;
+}
+
+/* Actions: center the button */
+.login-actions{
+  display:flex;
+  justify-content:center;
+  margin-top: 3rem;
+}
+
+/* Error message */
+.login-error{
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: .5rem .6rem;
+  border-radius: 8px;
+  margin-bottom: .6rem;
+  display: none; /* toggled by JS */
+}
+
+/* Stronger selector so it wins over any .card rules */
+.card.login-card{
+  /* pick one of these; both are fine */
+  /* width: min(600px, 100%); */
+  width: clamp(480px, 70vw, 500px);  /* responsive and wider */
+}
+
+/* make sure inputs follow the new width */
+.card.login-card .input{
+  width: 50%;
+  max-width: none;
+}
+
+/* optional: the <main> element has a global max-width in style.css.
+   This clears it for the login page so your card isn't constrained. */
+main.login-wrap{
+  max-width: none;
+}

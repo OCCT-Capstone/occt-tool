@@ -1,0 +1,104 @@
+/* ================================
+   OCCT — Settings page (wider card,
+   fixed-width inner content)
+   ================================ */
+
+/* Tunables */
+:root{
+  --settings-card-max: 980px;   /* how wide the card may grow */
+  --settings-inner:     560px;   /* fixed width for fields/buttons */
+}
+
+/* Optional page-only scoping if you add <body class="settings-page"> */
+.page-title{ text-align:center; }
+
+/* The card itself: wide like login */
+.settings-card{
+  width: clamp(720px, 70vw, var(--settings-card-max));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1.8rem 2.0rem;
+}
+
+/* Constrain inner items to a fixed width and center them */
+.settings-card > .section-title,
+.settings-card > .field,
+.settings-card > .actions-row,
+.settings-card > .sep{
+  width: 100%;
+  max-width: var(--settings-inner);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Section headings + separators */
+.section-title{ font-size:1.05rem; font-weight:800; margin-top:.2rem; text-align:center; }
+.sep{
+  border:0; border-top:1px solid var(--ring);
+  margin:.2rem auto .6rem;
+  width: 100%;
+  max-width: var(--settings-inner);
+}
+
+/* Fields */
+.settings-card .field{
+  display:flex; flex-direction:column; align-items:center;
+  gap:.6rem; text-align:center; margin:.2rem 0 1rem;
+}
+
+/* Theme row stacks (like login form rows) */
+.settings-card .field.row{
+  flex-direction:column; align-items:center;
+}
+
+/* Inputs/selects centered with a fixed inner width */
+.settings-card .input,
+.settings-card .select{
+  width: 75%;
+  max-width: var(--settings-inner);
+  margin: 1rem auto;
+    padding: .5rem .7rem;
+}
+
+/* Helper text */
+.settings-card .help{ text-align:center; color:var(--muted); font-size:.92rem; }
+
+/* Action buttons */
+.settings-card .actions-row{
+  display:flex; justify-content:center; align-items:center; gap:.8rem; flex-wrap:wrap;
+}
+
+/* Switch (scoped to settings card) */
+.settings-card .switch{ position:relative; display:inline-block; width:46px; height:26px; }
+.settings-card .switch input{ display:none; }
+.settings-card .switch .slider{
+  position:absolute; inset:0; background:#e5e7eb; border-radius:999px; transition:.2s; cursor:pointer;
+}
+.settings-card .switch .slider:before{
+  content:""; position:absolute; width:20px; height:20px; left:3px; top:3px;
+  background:#fff; border-radius:50%; transition:.2s; box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+.settings-card .switch input:checked + .slider{ background:#2563eb; }
+.settings-card .switch input:checked + .slider:before{ transform:translateX(20px); }
+
+/* Toast + danger button (used here) */
+.settings-card .toast{
+  background:#e3f2fd; color:#0b5394; border:1px solid #bbdefb;
+  padding:.5rem .7rem; border-radius:10px; font-weight:600;
+}
+.settings-card .btn.danger{ background:#ef4444; color:#fff; }
+.settings-card .btn.danger:hover{ background:#dc2626; }
+
+/* Mobile: let everything breathe at full width */
+@media (max-width: 720px){
+  .settings-card{ width: 100%; padding: 1.4rem 1rem; }
+  .settings-card > .section-title,
+  .settings-card > .field,
+  .settings-card > .actions-row,
+  .settings-card > .sep,
+  .settings-card .input,
+  .settings-card .select{ max-width: 100%; }
+}

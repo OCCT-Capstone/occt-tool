@@ -1,0 +1,37 @@
+/* Dashboard-only visuals: KPIs, donut, bars */
+
+.kpi-big{ font-size:3rem; font-weight:700; margin:.2rem 0 .6rem; }
+.kpi-row{ display:flex; justify-content:space-between; padding:.15rem 0; }
+
+/* Donut */
+.donut-wrap{ position:relative; width:180px; height:180px; margin:.2rem auto; }
+.donut{ width:100%; height:100%; transform:rotate(-90deg); }
+.donut-track{ fill:none; stroke:#ffe1e1; stroke-width:3.5; }
+.donut-value{ fill:none; stroke:#fb7185; stroke-width:3.5; stroke-linecap:round; transition:stroke-dasharray .4s ease; }
+.donut-cap{ fill:#fb7185; transform-origin:center; }
+.donut-center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+.donut-number{ font-size:2.2rem; font-weight:700; }
+.donut-sub{ color:var(--muted); }
+
+/* Legend */
+.legend{ display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; color:var(--muted); }
+.key{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.2rem; vertical-align:middle; }
+.key-green{ background:var(--green); }
+.key-red{ background:var(--red); }
+.spacer{ flex:1; }
+
+/* Bars (grid, aligned with axis) */
+.bars{
+  display:grid; grid-auto-flow:column; grid-auto-columns:44px; gap:16px;
+  align-items:end; height:180px; padding:.5rem .6rem .2rem; border:1px dashed var(--ring); border-radius:12px;
+}
+.barcol{ height:100%; display:flex; flex-direction:column; justify-content:flex-end; gap:4px; }
+.bar{ width:100%; border-radius:6px; }
+.bar.green{ background:var(--green); }
+.bar.red{ background:var(--red); }
+
+.axis-x{
+  display:grid; grid-auto-flow:column; grid-auto-columns:44px; gap:16px; justify-content:start;
+  padding:.4rem .6rem 0; color:var(--muted); font-size:.9rem;
+}
+.axis-x span{ text-align:center; }

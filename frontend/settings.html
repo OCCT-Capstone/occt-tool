@@ -10,6 +10,7 @@
 
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 </head>
 
 <body class="dash-body">
@@ -56,7 +57,7 @@
 
       <div class="actions-row">
         <button type="submit" class="btn">Save</button>
-        <button type="button" id="resetBtn" class="btn secondary">Reset to defaults</button>
+        <button type="button" id="resetBtn" class="btn secondary">Reset</button>
         <div id="toast" class="toast" hidden>Saved</div>
       </div>
 
@@ -64,8 +65,7 @@
 
       <!-- Logout (placeholder) -->
       <div class="actions-row">
-        <button type="button" id="logoutBtn" class="btn danger" title="Not wired yet">Log out</button>
-        <div class="help">Logout will be enabled when auth is added back.</div>
+        <button type="button" id="logoutBtn" class="btn danger">Log out</button>
       </div>
     </form>
   </main>
