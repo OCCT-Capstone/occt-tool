@@ -14,7 +14,7 @@
 
 /* The card itself: wide like login */
 .settings-card{
-  width: clamp(720px, 70vw, var(--settings-card-max));
+  width: clamp(720px, 40vw, var(--settings-card-max));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
