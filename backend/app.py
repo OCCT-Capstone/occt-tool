@@ -40,7 +40,7 @@ app.register_blueprint(api_bp)     # /api/*
 
 # --- Hard-coded credentials (prototype) ---
 ADMIN_USER = "admin"
-ADMIN_PASS = "password"
+ADMIN_PASS = "Password123!"
 
 def login_required(view):
     @wraps(view)
