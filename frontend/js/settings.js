@@ -1,16 +1,18 @@
 // static/js/settings.js
 (function () {
   // Guarded access to occt keys (fallback if site.js path is wrong)
-  const occt = window.occt || { K: { THEME: 'occt.theme', MODE: 'occt.apiMode' } };
+  const occt = window.occt || { K: { THEME: 'occt.theme', MODE: 'occt.apiMode' }, get: ()=>null, set: ()=>{} };
   const K = occt.K;
 
   const $ = (s) => document.querySelector(s);
   const themeDark = $('#themeDark');
-  const apiMode   = $('#apiMode');
+  const apiMode   = $('#apiMode');      // <select id="apiMode"> with values "sample" | "live"
   const form      = $('#settingsForm');
   const toast     = $('#toast');
   const resetBtn  = $('#resetBtn');
   const logoutBtn = $('#logoutBtn');
+  const rescanBtn = $('#rescanBtn');    // <button id="rescanBtn">Rescan</button>
+  const rescanMsg = $('#rescanStatus'); // optional <div id="rescanStatus"></div>
 
   const DEFAULTS = {
     [K.THEME]: 'light',
@@ -22,8 +24,10 @@
     toast.textContent = msg;
     toast.hidden = false;
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => (toast.hidden = true), 1200);
+    showToast._t = setTimeout(() => (toast.hidden = true), 1400);
   }
+
+  function setText(el, v) { if (el) el.textContent = v; }
 
   function load() {
     const theme = localStorage.getItem(K.THEME) || DEFAULTS[K.THEME];
@@ -44,6 +48,13 @@
     showToast(`Theme: ${dark ? 'Dark' : 'Light'}`);
   }
 
+  // Persist data source immediately when dropdown changes
+  function onModeChange() {
+    const mode = apiMode?.value === 'live' ? 'live' : 'sample';
+    localStorage.setItem(K.MODE, mode);
+    showToast(`Data source: ${mode.toUpperCase()}`);
+  }
+
   // Save ONLY the data source (theme already persisted on toggle)
   function save(e) {
     e?.preventDefault?.();
@@ -57,29 +68,65 @@
     showToast('Defaults restored');
   }
 
+  // ---- Rescan: POST to current mode's /rescan ----
+  async function doRescan() {
+    if (!rescanBtn) return;
+    rescanBtn.disabled = true;
+    const orig = rescanBtn.textContent;
+    rescanBtn.textContent = 'Rescanning…';
+    setText(rescanMsg, '');
+
+    try {
+      // Use the global helper to build the correct base (/api/sample or /api/live)
+      const url = (window.occt && window.occt.api) ? window.occt.api('/rescan') : '/api/rescan';
+      const resp = await fetch(url, { method: 'POST' });
+      const body = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        const msg = body?.message || `Rescan failed (${resp.status})`;
+        showToast(msg);
+        setText(rescanMsg, msg);
+      } else {
+        // For sample mode we return ingested + unique counts; for live mode we return 501 for now
+        const ing = (body?.ingested ?? '—');
+        const tot = (body?.total_unique ?? '—');
+        const fail= (body?.failed_unique ?? '—');
+        const msg = `Rescan OK. Ingested: ${ing}, Total unique: ${tot}, Failed: ${fail}`;
+        showToast('Rescan complete');
+        setText(rescanMsg, msg);
+      }
+    } catch (e) {
+      const msg = `Rescan error: ${e}`;
+      showToast('Rescan error');
+      setText(rescanMsg, msg);
+    } finally {
+      rescanBtn.textContent = orig;
+      rescanBtn.disabled = false;
+    }
+  }
+
   // ---- Real logout ----
   async function logoutNow() {
     try {
-      const res = await fetch('/auth/logout', {
+      await fetch('/auth/logout', {
         method: 'POST',
-        credentials: 'same-origin', // include session cookie
+        credentials: 'same-origin',
         headers: { 'X-Requested-With': 'fetch' }
       });
-      // Even if non-200, clear client state and go to /login
     } catch (_) {
-      // ignore network errors; still navigate away
+      // ignore
     } finally {
-      // Optional: nuke any local client state as well
-      // localStorage.clear(); // uncomment if you want a totally clean slate
       window.location.replace('/login');
     }
   }
 
   // ---- Wire events ----
   themeDark?.addEventListener('change', applyThemeFromToggle);
+  apiMode?.addEventListener('change', onModeChange);
   form?.addEventListener('submit', save);
   resetBtn?.addEventListener('click', resetAll);
-  logoutBtn?.addEventListener('click', logoutNow); // <-- single, correct handler
+  logoutBtn?.addEventListener('click', logoutNow);
+  rescanBtn?.addEventListener('click', doRescan);
 
   // ---- Initial ----
   load();

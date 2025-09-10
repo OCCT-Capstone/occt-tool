@@ -15,30 +15,30 @@ app = Flask(
     instance_relative_config=True,
 )
 
-# --- Sessions ---
+# Sessions
 app.config["SECRET_KEY"] = os.getenv("OCCT_SECRET_KEY", "dev-secret-change-me")
 app.config["SESSION_COOKIE_NAME"] = "occt_session"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# Ensure instance/ exists
+# Ensure instance/
 os.makedirs(app.instance_path, exist_ok=True)
 
-# --- SQLite ---
+# SQLite
 db_path = os.path.join(app.instance_path, "occt.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Bind db to this app and create tables
 db.init_app(app)
 with app.app_context():
     db.create_all()
 
-# --- API blueprints ---
-from .api import api_bp, sample_bp
-app.register_blueprint(sample_bp)  # /api/sample/*
-app.register_blueprint(api_bp)     # /api/*
+# Blueprints
+from .api import api_bp, sample_bp, live_bp   # <-- add live_bp
+app.register_blueprint(sample_bp)             # /api/sample/*
+app.register_blueprint(api_bp)                # /api/*
+app.register_blueprint(live_bp)               # /api/live/*
 
-# --- Hard-coded credentials (prototype) ---
+# Auth (unchanged)
 ADMIN_USER = "admin"
 ADMIN_PASS = "Password123!"
 
@@ -50,7 +50,6 @@ def login_required(view):
         return view(*args, **kwargs)
     return wrapped
 
-# ---------- Auth routes ----------
 @app.get("/login")
 def login_page():
     if session.get("user"):
@@ -72,7 +71,7 @@ def auth_logout():
     session.clear()
     return jsonify(ok=True)
 
-# ---------- Protected pages ----------
+# Protected pages
 @app.get("/")
 @login_required
 def index():
@@ -93,7 +92,7 @@ def remediation_page():
 def settings_page():
     return render_template("settings.html")
 
-# Optional: health check
+# Health
 @app.get("/healthz")
 def healthz():
     return {"ok": True}

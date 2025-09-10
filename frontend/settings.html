@@ -28,7 +28,7 @@
 
   <main class="container">
     <h1 class="page-title">Settings</h1>
-    <br></br>
+    <br>
 
     <form id="settingsForm" class="card settings-card">
       <!-- Appearance -->
@@ -46,13 +46,21 @@
 
       <!-- Data -->
       <h2 class="section-title">Data</h2>
+
       <div class="field">
         <label for="apiMode" class="label">Data source</label>
         <select id="apiMode" class="input select">
-          <option value="sample">Samples (local JSON endpoints)</option>
-          <option value="live">Computer live data (backend APIs)</option>
+          <option value="sample">Samples (DB-backed via /api/sample)</option>
+          <option value="live">Live (DB-backed via /api/live)</option>
         </select>
-        <div class="help">Switch to “live” once backend endpoints are ready.</div>
+        <div class="help">Choose where new scans come from. Both modes read from the database.</div>
+      </div>
+
+      <!-- Rescan control -->
+      <div class="field row">
+        <label class="label" for="rescanBtn">Rescan</label>
+        <button type="button" id="rescanBtn" class="btn">Rescan</button>
+        <div id="rescanStatus" class="help" aria-live="polite"></div>
       </div>
 
       <div class="actions-row">
@@ -63,7 +71,7 @@
 
       <hr class="sep"/>
 
-      <!-- Logout (placeholder) -->
+      <!-- Logout -->
       <div class="actions-row">
         <button type="button" id="logoutBtn" class="btn danger">Log out</button>
       </div>

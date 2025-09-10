@@ -11,9 +11,10 @@
   }
 
   // Build API path depending on mode
+  // FIX: live goes to /api/live; sample goes to /api/sample
   function api(path) {
     const mode = get(K.MODE, 'sample');
-    return mode === 'live' ? `/api${path}` : `/api/sample${path}`;
+    return mode === 'live' ? `/api/live${path}` : `/api/sample${path}`;
   }
 
   w.occt = { K, get, set, api, applyThemeEarly };

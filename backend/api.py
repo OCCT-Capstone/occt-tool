@@ -7,8 +7,9 @@ from .models import db, AuditEvent
 from .ingest_samples import project_root, ingest_audit
 
 # --------- Blueprints ---------
-sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")
-api_bp    = Blueprint("api",        __name__, url_prefix="/api")
+sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")  # DB-backed SAMPLE mode (auto-syncs from file)
+api_bp    = Blueprint("api",        __name__, url_prefix="/api")         # alias your UI already uses (same as sample)
+live_bp   = Blueprint("live_api",   __name__, url_prefix="/api/live")    # DB-backed LIVE mode (no auto-sync)
 
 # --------- Helpers: paths & state ---------
 def _samples_dir():
@@ -48,7 +49,7 @@ def _save_state(state: dict):
     with open(_state_path(), "w", encoding="utf-8") as f:
         json.dump(state, f)
 
-# --------- Auto-sync samples/audit.json -> DB ---------
+# --------- SAMPLE: auto-sync samples/audit.json -> DB ---------
 def _ensure_samples_synced():
     """If samples/audit.json changed since last time, (re)ingest into DB."""
     audit_path = _audit_sample_path()
@@ -62,14 +63,21 @@ def _ensure_samples_synced():
     _save_state(state)
     current_app.logger.info(f"Samples synced -> DB: {count} rows from {audit_path}")
 
+def _force_reingest_samples():
+    """Always (re)ingest samples/audit.json into DB, ignoring mtime."""
+    audit_path = _audit_sample_path()
+    count = ingest_audit(current_app, audit_path)
+    state = _load_state()
+    state["audit_json_mtime"] = _file_mtime(audit_path)
+    _save_state(state)
+    return count
+
 # --------- Unique rows query (dedupe at API level) ---------
 def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=None, q=None):
     """
-    Build a query that returns unique audit events by (time, category, control, outcome, account, description),
-    even if the table contains duplicates with different IDs.
+    Return a query that produces unique audit events by (time, category, control, outcome, account, description).
     """
     base = db.session.query(AuditEvent)
-
     if category:
         base = base.filter(AuditEvent.category == category)
     if outcome:
@@ -86,7 +94,7 @@ def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=N
             (func.lower(AuditEvent.account).like(like))
         )
 
-    sub = base.subquery()  # select * from filtered rows
+    sub = base.subquery()
     uq = db.session.query(
         func.min(sub.c.id).label("id"),
         sub.c.time.label("time"),
@@ -99,10 +107,9 @@ def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=N
         sub.c.time, sub.c.category, sub.c.control,
         sub.c.outcome, sub.c.account, sub.c.description
     )
-    return uq  # query of unique rows
+    return uq
 
 def _unique_count():
-    """Total unique rows across the whole table."""
     uq_sub = _unique_rows_query().subquery()
     return db.session.query(func.count()).select_from(uq_sub).scalar() or 0
 
@@ -119,13 +126,11 @@ def _build_dashboard_json_with_optional_override():
     compliant_percent     = round((passed_unique / total_unique) * 100, 2) if total_unique else 0.0
     non_compliant_percent = round(100.0 - compliant_percent, 2)
 
-    # Default monthly from UNIQUE DB rows (percent per month)
+    # Default monthly from UNIQUE DB rows
     months = []
-    # Use the min/max from the raw table to pick a month range (ok for POC)
     min_dt = db.session.query(func.min(AuditEvent.time)).scalar()
     max_dt = db.session.query(func.max(AuditEvent.time)).scalar()
     if min_dt and max_dt:
-        # unique events subquery for re-use in month filters
         uq_all = _unique_rows_query().subquery()
         cursor = dt.datetime(max_dt.year, max_dt.month, 1)
         for _ in range(6):
@@ -135,11 +140,10 @@ def _build_dashboard_json_with_optional_override():
                 1 if cursor.month == 12 else cursor.month + 1,
                 1
             )
-
-            mtotal = db.session.query(func.count()).select_from(uq_all)\
-                .filter(uq_all.c.time >= mstart, uq_all.c.time < mend).scalar() or 0
+            mtotal  = db.session.query(func.count()).select_from(uq_all)\
+                        .filter(uq_all.c.time >= mstart, uq_all.c.time < mend).scalar() or 0
             mfailed = db.session.query(func.count()).select_from(uq_all)\
-                .filter(uq_all.c.time >= mstart, uq_all.c.time < mend, uq_all.c.outcome == "Failed").scalar() or 0
+                        .filter(uq_all.c.time >= mstart, uq_all.c.time < mend, uq_all.c.outcome == "Failed").scalar() or 0
             mpassed = max(mtotal - mfailed, 0)
 
             if mtotal > 0:
@@ -195,8 +199,8 @@ def _build_dashboard_json_with_optional_override():
     return payload
 
 # --------- Shared responders ---------
-def _resp_json(obj, *, source_header="db-sample", dashboard_source=None):
-    resp = make_response(jsonify(obj))
+def _resp_json(obj, *, source_header="db-sample", dashboard_source=None, status=200):
+    resp = make_response(jsonify(obj), status)
     resp.headers["X-OCCT-Source"] = source_header
     if dashboard_source:
         resp.headers["X-OCCT-Dashboard-Source"] = dashboard_source
@@ -210,7 +214,6 @@ def _build_audit_list_from_unique():
     date_from= request.args.get("from")
     date_to  = request.args.get("to")
 
-    # Make it a subquery so we can access columns via .c
     uq = _unique_rows_query(
         category=category,
         outcome=outcome,
@@ -219,7 +222,6 @@ def _build_audit_list_from_unique():
         q=q if q else None
     ).subquery()
 
-    # Now select from the subquery and order/limit
     rows = db.session.query(
         uq.c.id, uq.c.time, uq.c.category, uq.c.control,
         uq.c.outcome, uq.c.account, uq.c.description
@@ -238,8 +240,7 @@ def _build_audit_list_from_unique():
         })
     return out
 
-
-# --------- /api/sample/* ---------
+# --------- SAMPLE endpoints (/api/sample/*) ---------
 @sample_bp.get("/dashboard")
 def sample_dashboard():
     _ensure_samples_synced()
@@ -253,7 +254,21 @@ def sample_audit():
     rows = _build_audit_list_from_unique()
     return _resp_json(rows, source_header="db-sample")
 
-# --------- /api/* alias ---------
+@sample_bp.post("/rescan")
+def sample_rescan():
+    # force reload from samples regardless of mtime
+    n = _force_reingest_samples()
+    total_unique  = _unique_count()
+    failed_unique = _unique_failed_count()
+    return _resp_json({
+        "ok": True,
+        "mode": "sample",
+        "ingested": n,
+        "total_unique": total_unique,
+        "failed_unique": failed_unique
+    }, source_header="db-sample")
+
+# --------- /api/* alias (same as sample so existing UI keeps working) ---------
 @api_bp.get("/dashboard")
 def alias_dashboard():
     _ensure_samples_synced()
@@ -266,3 +281,30 @@ def alias_audit():
     _ensure_samples_synced()
     rows = _build_audit_list_from_unique()
     return _resp_json(rows, source_header="db-sample")
+
+@api_bp.post("/rescan")
+def alias_rescan():
+    # same as /api/sample/rescan (UI may call /api/rescan)
+    return sample_rescan()
+
+# --------- LIVE endpoints (/api/live/*) ---------
+@live_bp.get("/dashboard")
+def live_dashboard():
+    # Live mode reads whatever is in DB; no auto-sync from samples here
+    payload = _build_dashboard_json_with_optional_override()
+    dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
+    return _resp_json(payload, source_header="db-live", dashboard_source=dash_src)
+
+@live_bp.get("/audit")
+def live_audit():
+    rows = _build_audit_list_from_unique()
+    return _resp_json(rows, source_header="db-live")
+
+@live_bp.post("/rescan")
+def live_rescan():
+    # Placeholder: we’ll call PowerShell collectors later.
+    return _resp_json({
+        "ok": False,
+        "mode": "live",
+        "message": "Live rescan not implemented yet (PowerShell collectors pending)."
+    }, source_header="db-live", status=501)
