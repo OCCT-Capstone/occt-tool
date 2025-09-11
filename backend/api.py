@@ -1,5 +1,5 @@
 # backend/api.py
-from flask import Blueprint, jsonify, request, current_app, make_response
+from flask import Blueprint, jsonify, request, current_app, make_response, render_template
 from sqlalchemy import func, desc
 import os, json, datetime as dt
 
@@ -8,7 +8,7 @@ from .ingest_samples import project_root, ingest_audit
 
 # --------- Blueprints ---------
 sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")  # DB-backed SAMPLE mode (auto-syncs from file)
-api_bp    = Blueprint("api",        __name__, url_prefix="/api")         # alias your UI already uses (same as sample)
+api_bp    = Blueprint("api",        __name__, url_prefix="/api")         # alias your UI uses (same as sample)
 live_bp   = Blueprint("live_api",   __name__, url_prefix="/api/live")    # DB-backed LIVE mode (no auto-sync)
 
 # --------- Helpers: paths & state ---------
@@ -72,7 +72,7 @@ def _force_reingest_samples():
     _save_state(state)
     return count
 
-# --------- Unique rows query (dedupe at API level) ---------
+# --------- Unique rows query (API-level dedupe) ---------
 def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=None, q=None):
     """
     Return a query that produces unique audit events by (time, category, control, outcome, account, description).
@@ -198,6 +198,39 @@ def _build_dashboard_json_with_optional_override():
 
     return payload
 
+# --------- Remediation overview (unique failed only) ---------
+def _build_remediation_overview():
+    uq = _unique_rows_query().subquery()
+    # counts by category (Failed)
+    by_cat = db.session.query(
+        uq.c.category, func.count().label("n")
+    ).filter(uq.c.outcome == "Failed").group_by(uq.c.category).order_by(desc("n")).all()
+
+    # top controls (Failed)
+    by_ctrl = db.session.query(
+        uq.c.control, func.count().label("n")
+    ).filter(uq.c.outcome == "Failed").group_by(uq.c.control).order_by(desc("n")).limit(10).all()
+
+    # recent failed events (deduped)
+    recent = db.session.query(
+        uq.c.time, uq.c.category, uq.c.control, uq.c.account, uq.c.description
+    ).filter(uq.c.outcome == "Failed").order_by(desc(uq.c.time)).limit(10).all()
+
+    # distinct accounts impacted (Failed)
+    accounts = db.session.query(func.count(func.distinct(uq.c.account))).filter(
+        uq.c.outcome == "Failed", uq.c.account.isnot(None), uq.c.account != ""
+    ).scalar() or 0
+
+    return {
+        "by_category": [{"category": c or "(Uncategorized)", "failed": int(n)} for c, n in by_cat],
+        "top_controls": [{"control": c or "(N/A)", "failed": int(n)} for c, n in by_ctrl],
+        "recent_failed": [{
+            "time": (t.isoformat() + "Z") if t else None,
+            "category": cat, "control": ctrl, "account": acct, "description": descp
+        } for (t, cat, ctrl, acct, descp) in recent],
+        "accounts_impacted": int(accounts)
+    }
+
 # --------- Shared responders ---------
 def _resp_json(obj, *, source_header="db-sample", dashboard_source=None, status=200):
     resp = make_response(jsonify(obj), status)
@@ -256,19 +289,34 @@ def sample_audit():
 
 @sample_bp.post("/rescan")
 def sample_rescan():
-    # force reload from samples regardless of mtime
     n = _force_reingest_samples()
     total_unique  = _unique_count()
     failed_unique = _unique_failed_count()
     return _resp_json({
-        "ok": True,
-        "mode": "sample",
-        "ingested": n,
-        "total_unique": total_unique,
-        "failed_unique": failed_unique
+        "ok": True, "mode": "sample", "ingested": n,
+        "total_unique": total_unique, "failed_unique": failed_unique
     }, source_header="db-sample")
 
-# --------- /api/* alias (same as sample so existing UI keeps working) ---------
+@sample_bp.get("/report")
+def sample_report():
+    _ensure_samples_synced()
+    dash = _build_dashboard_json_with_optional_override()
+    rem  = _build_remediation_overview()
+    html = render_template(
+        "report.html",
+        dashboard=dash,
+        remediation=rem,
+        generated_at=dt.datetime.utcnow(),
+        mode="sample"
+    )
+    resp = make_response(html, 200)
+    if request.args.get("download") == "1":
+        fname = f"occt-report-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.html"
+        resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
+
+# --------- /api/* alias (same as sample so UI keeps working) ---------
 @api_bp.get("/dashboard")
 def alias_dashboard():
     _ensure_samples_synced()
@@ -284,13 +332,16 @@ def alias_audit():
 
 @api_bp.post("/rescan")
 def alias_rescan():
-    # same as /api/sample/rescan (UI may call /api/rescan)
     return sample_rescan()
+
+@api_bp.get("/report")
+def alias_report():
+    # use sample report behavior
+    return sample_report()
 
 # --------- LIVE endpoints (/api/live/*) ---------
 @live_bp.get("/dashboard")
 def live_dashboard():
-    # Live mode reads whatever is in DB; no auto-sync from samples here
     payload = _build_dashboard_json_with_optional_override()
     dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
     return _resp_json(payload, source_header="db-live", dashboard_source=dash_src)
@@ -302,9 +353,26 @@ def live_audit():
 
 @live_bp.post("/rescan")
 def live_rescan():
-    # Placeholder: we’ll call PowerShell collectors later.
     return _resp_json({
         "ok": False,
         "mode": "live",
         "message": "Live rescan not implemented yet (PowerShell collectors pending)."
     }, source_header="db-live", status=501)
+
+@live_bp.get("/report")
+def live_report():
+    dash = _build_dashboard_json_with_optional_override()
+    rem  = _build_remediation_overview()
+    html = render_template(
+        "report.html",
+        dashboard=dash,
+        remediation=rem,
+        generated_at=dt.datetime.utcnow(),
+        mode="live"
+    )
+    resp = make_response(html, 200)
+    if request.args.get("download") == "1":
+        fname = f"occt-report-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.html"
+        resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp

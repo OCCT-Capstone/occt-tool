@@ -32,13 +32,19 @@ const api = (window.occt && window.occt.api)
 // --- Utils ---
 const escapeHTML = (s='') =>
   s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmtTime = iso => {
+
+// Unified AU formatter (DD/MM/YYYY HH:MM 24h, Australia/Sydney)
+const fmtTime = (iso) => {
   if (!iso) return '';
+  if (window.occt && typeof window.occt.formatDateTimeAU === 'function') {
+    return window.occt.formatDateTimeAU(iso);
+  }
   const d = new Date(iso);
-  const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const day = d.toLocaleDateString();
-  return `${t} ${day}`;
+  const date = d.toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
+  const time = d.toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour:'2-digit', minute:'2-digit', hour12:false });
+  return `${time} ${date}`;
 };
+
 const cmp = (a,b,k) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0);
 
 // Badge/outcome classes
@@ -172,7 +178,7 @@ exportBtn.addEventListener('click', () => {
   const header = ['Time','Category','Control','Outcome','Account/Host','Description'];
   const csv = [header.join(',')].concat(
     rows.map(r => [
-      r.time ? new Date(r.time).toISOString() : '',
+      r.time ? new Date(r.time).toISOString() : '', // keep ISO in CSV for machine-readability
       r.category,
       (r.control || '').replaceAll('"','""'),
       r.outcome,

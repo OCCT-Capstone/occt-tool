@@ -10,7 +10,5 @@
   { "time": "2025-04-18T07:30:00Z", "category": "Security", "control": "Antivirus up to date",     "outcome": "Passed", "account": "SRV-WS001", "description": "Definitions current" },
   { "time": "2025-04-17T06:15:00Z", "category": "System",   "control": "OS patches applied",       "outcome": "Failed", "account": "SRV-DB01",   "description": "Missing critical updates" },
   { "time": "2025-04-16T05:50:00Z", "category": "Account",  "control": "User account lockout",     "outcome": "Passed", "account": "Domain",     "description": "Lockout policy enforced" },
-  { "time": "2025-04-15T04:30:00Z", "category": "Security", "control": "Data encryption",          "outcome": "Failed", "account": "SRV-FS01",   "description": "Sensitive data unencrypted" },
-  { "time": "2025-04-14T03:20:00Z", "category": "System",   "control": "Remote desktop disabled",  "outcome": "Passed", "account": "SRV-WS001", "description": "RDP disabled via GPO" },
-  { "time": "2025-04-13T02:10:00Z", "category": "Account",  "control": "Guest account disabled",   "outcome": "Failed", "account": "Guest",      "description": "Guest account is enabled" }
+  { "time": "2025-04-15T04:30:00Z", "category": "Security", "control": "Data encryption",          "outcome": "Failed", "account": "SRV-FS01",   "description": "Sensitive data unencrypted" }
 ]

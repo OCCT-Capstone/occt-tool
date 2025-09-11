@@ -8,14 +8,12 @@
   <!-- Load helpers BEFORE CSS to prevent theme flash -->
   <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
+  <link rel="icon" type="png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 </head>
 
 <body class="dash-body">
-
-  <!-- Top Nav -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
@@ -46,7 +44,6 @@
 
       <!-- Data -->
       <h2 class="section-title">Data</h2>
-
       <div class="field">
         <label for="apiMode" class="label">Data source</label>
         <select id="apiMode" class="input select">
@@ -63,13 +60,26 @@
         <div id="rescanStatus" class="help" aria-live="polite"></div>
       </div>
 
-      <div class="actions-row">
-        <button type="submit" class="btn">Save</button>
-        <button type="button" id="resetBtn" class="btn secondary">Reset</button>
-        <div id="toast" class="toast" hidden>Saved</div>
+      <hr class="sep"/>
+
+      <!-- Reports -->
+      <h2 class="section-title">Reports</h2>
+      <div class="field row">
+        <label class="label" for="reportBtn">Compliance report</label>
+        <div class="row">
+          <button type="button" id="reportBtn" class="btn">View report</button>
+          <button type="button" id="reportDlBtn" class="btn secondary" style="margin-left:.5rem">Download HTML</button>
+        </div>
+        <div class="help">Summarizes Dashboard & Remediation. Print → Save as PDF from the report page.</div>
       </div>
 
       <hr class="sep"/>
+
+      <div class="actions-row">
+        <!-- Save removed -->
+        <button type="button" id="resetBtn" class="btn secondary">Reset</button>
+        <div id="toast" class="toast" hidden></div>
+      </div>
 
       <!-- Logout -->
       <div class="actions-row">
