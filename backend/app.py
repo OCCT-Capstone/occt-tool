@@ -3,6 +3,7 @@ from flask import (
     Flask, render_template, request, jsonify, redirect, url_for, session
 )
 from functools import wraps
+from .db_util import ensure_c1_columns
 import os
 
 from .models import db  # shared SQLAlchemy instance
@@ -31,6 +32,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 with app.app_context():
     db.create_all()
+    ensure_c1_columns()
 
 # Blueprints
 from .api import api_bp, sample_bp, live_bp   # <-- add live_bp

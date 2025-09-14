@@ -12,6 +12,8 @@ class AuditEvent(db.Model):
     outcome     = db.Column(db.String(32), index=True)   # e.g., "Failed", "Info"
     account     = db.Column(db.String(128))
     description = db.Column(db.Text)
+    source      = db.Column(db.String(16), index=True, default="sample")  # e.g., "Sample", "Live"
+    host        = db.Column(db.String(128))
 
     def to_dict(self):
         return {
@@ -22,4 +24,6 @@ class AuditEvent(db.Model):
             "outcome": self.outcome,
             "account": self.account,
             "description": self.description,
+            "source": self.source,
+            "host": self.host,
         }

@@ -74,10 +74,22 @@ def _force_reingest_samples():
 
 # --------- Unique rows query (API-level dedupe) ---------
 def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=None, q=None):
-    """
-    Return a query that produces unique audit events by (time, category, control, outcome, account, description).
-    """
+    # Decide dataset by blueprint (sample_api vs live_api)
+    mode = "live" if (getattr(request, "blueprint", "") == "live_api") else "sample"
+
     base = db.session.query(AuditEvent)
+
+    # Filter by source only if the column exists on the model (Option A adds it)
+    try:
+        from sqlalchemy import inspect
+        cols = [c.key for c in inspect(AuditEvent).c]
+        if "source" in cols:
+            base = base.filter(AuditEvent.source == mode)
+    except Exception:
+        # If models.py doesn't have 'source' yet, skip filtering (Option B path)
+        pass
+
+    # (keep your existing filters below)
     if category:
         base = base.filter(AuditEvent.category == category)
     if outcome:
@@ -97,17 +109,12 @@ def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=N
     sub = base.subquery()
     uq = db.session.query(
         func.min(sub.c.id).label("id"),
-        sub.c.time.label("time"),
-        sub.c.category.label("category"),
-        sub.c.control.label("control"),
-        sub.c.outcome.label("outcome"),
-        sub.c.account.label("account"),
-        sub.c.description.label("description"),
+        sub.c.time, sub.c.category, sub.c.control, sub.c.outcome, sub.c.account, sub.c.description
     ).group_by(
-        sub.c.time, sub.c.category, sub.c.control,
-        sub.c.outcome, sub.c.account, sub.c.description
+        sub.c.time, sub.c.category, sub.c.control, sub.c.outcome, sub.c.account, sub.c.description
     )
     return uq
+
 
 def _unique_count():
     uq_sub = _unique_rows_query().subquery()
