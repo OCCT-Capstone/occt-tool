@@ -1,0 +1,23 @@
+- id: CC-PW-001
+  title: "Password: Minimum Length"
+  category: "Security"
+  when: "win.password.min_length >= 14"
+  pass: "Observed {{win.password.min_length}}, expected >=14"
+  fail: "Observed {{win.password.min_length}}, expected >=14"
+  remediation: "Increase 'Minimum password length' to 14 or more: Local Security Policy → Account Policies → Password Policy."
+
+- id: CC-PW-002
+  title: "Password: Complexity Enabled"
+  category: "Security"
+  when: "win.password.complexity_enabled == True"
+  pass: "Complexity enabled per policy"
+  fail: "Complexity disabled"
+  remediation: "Enable 'Password must meet complexity requirements' in Local Security Policy → Password Policy."
+
+- id: CC-PW-003
+  title: "Password: Lockout Threshold"
+  category: "Security"
+  when: "win.password.lockout_threshold > 0 and win.password.lockout_threshold <= 5"
+  pass: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
+  fail: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
+  remediation: "Set 'Account lockout threshold' to 1–5 invalid attempts in Local Security Policy → Account Lockout Policy."

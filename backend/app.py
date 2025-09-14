@@ -4,6 +4,8 @@ from flask import (
 )
 from functools import wraps
 from .db_util import ensure_c1_columns
+from .live_facts import attach_live_facts, attach_live_compliance
+from .live_facts import attach_live_rules_api
 import os
 
 from .models import db  # shared SQLAlchemy instance
@@ -36,6 +38,9 @@ with app.app_context():
 
 # Blueprints
 from .api import api_bp, sample_bp, live_bp   # <-- add live_bp
+attach_live_facts(live_bp, app)               # add live facts endpoint
+attach_live_compliance(live_bp, app)          # add live compliance stats endpoint
+attach_live_rules_api(live_bp, app)           # add live rules management endpoints
 app.register_blueprint(sample_bp)             # /api/sample/*
 app.register_blueprint(api_bp)                # /api/*
 app.register_blueprint(live_bp)               # /api/live/*
