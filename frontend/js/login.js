@@ -28,7 +28,20 @@
       });
 
       if (res.ok) {
-        // Go to dashboard on success
+        // Show loading overlay if available, run a LIVE rescan, then go to dashboard
+        try {
+          if (window.occt && window.occt.loading && window.occt.loading.show) {
+            window.occt.loading.show();
+          }
+          // No opt-out header here: we WANT the overlay visible during login bootstrap
+          await fetch('/api/live/rescan?wait=1', { method: 'POST' });
+        } catch (_) {
+          // ignore rescan errors; still continue to dashboard
+        } finally {
+          if (window.occt && window.occt.loading && window.occt.loading.hide) {
+            window.occt.loading.hide();
+          }
+        }
         window.location.replace('/');
       } else if (res.status === 401) {
         showError('Invalid username or password');

@@ -358,14 +358,6 @@ def live_audit():
     rows = _build_audit_list_from_unique()
     return _resp_json(rows, source_header="db-live")
 
-@live_bp.post("/rescan")
-def live_rescan():
-    return _resp_json({
-        "ok": False,
-        "mode": "live",
-        "message": "Live rescan not implemented yet (PowerShell collectors pending)."
-    }, source_header="db-live", status=501)
-
 @live_bp.get("/report")
 def live_report():
     dash = _build_dashboard_json_with_optional_override()

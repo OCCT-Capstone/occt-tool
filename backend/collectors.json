@@ -1,0 +1,11 @@
+{
+  "collectors": [
+    {
+      "name": "win_pwpolicy",
+      "script": "collector/win_pwpolicy_facts.ps1",
+      "interval_seconds": 600,
+      "enabled": true,
+      "replace_previous": true
+    }
+  ]
+}
