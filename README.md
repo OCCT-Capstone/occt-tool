@@ -35,6 +35,7 @@ source env/bin/activate
 
 **Windows (PowerShell)**
 ```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 python -m venv env
 .\env\Scripts\activate
 ```
