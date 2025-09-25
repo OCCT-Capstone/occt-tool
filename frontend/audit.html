@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Meta & head -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Audit Trail</title>
+
+  <!-- Global helpers (defines window.occt.api) -->
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
+  <!-- Favicon & styles -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='audit.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-overrides.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/audit.css') }}">
 </head>
+
 <body class="dash-body">
 
-  <!-- Top Nav -->
+  <!-- ========== Top Navigation ========== -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
@@ -21,27 +29,29 @@
     </ul>
   </nav>
 
+  <!-- ========== Main Content ========== -->
   <main class="container">
-
     <h1 class="page-title">Audit Trail</h1>
 
-    <!-- Filters / Tools -->
+    <!-- ===== Filters / Tools ===== -->
     <section class="toolbar card">
+      <!-- Full-text search -->
       <div class="field">
         <label for="q">Search</label>
         <input id="q" class="input" type="text" placeholder="Search description, control, account..." />
       </div>
 
+      <!-- Date range -->
       <div class="field">
         <label>Date from</label>
         <input id="dateFrom" class="input" type="date" />
       </div>
-
       <div class="field">
         <label>Date to</label>
         <input id="dateTo" class="input" type="date" />
       </div>
 
+      <!-- Category chips -->
       <div class="field">
         <label>Category</label>
         <div class="chips">
@@ -51,6 +61,7 @@
         </div>
       </div>
 
+      <!-- Outcome select -->
       <div class="field">
         <label>Outcome</label>
         <select id="outcome" class="input select">
@@ -60,15 +71,17 @@
         </select>
       </div>
 
+      <!-- Actions -->
       <div class="tools">
-        <button id="clearBtn" class="btn secondary">Clear</button>
-        <button id="exportBtn" class="btn">Export CSV</button>
+        <button id="clearBtn" class="btn secondary" type="button">Clear</button>
+        <button id="exportBtn" class="btn" type="button">Export CSV</button>
       </div>
     </section>
 
-    <!-- Table -->
+    <!-- ===== Table ===== -->
     <section class="table-card card">
       <div class="table-wrap">
+        <!-- Clickable headers for sorting (data-sort attrs used by JS) -->
         <table class="audit-table">
           <thead>
             <tr>
@@ -86,18 +99,20 @@
         </table>
       </div>
 
+      <!-- Pagination + count -->
       <div class="table-footer">
         <div class="count"><span id="resultCount">0</span> results</div>
         <div class="pager">
-          <button id="prevPage" class="btn secondary" disabled>Prev</button>
+          <button id="prevPage" class="btn secondary" type="button" disabled>Prev</button>
           <span id="pageInfo">1 / 1</span>
-          <button id="nextPage" class="btn secondary" disabled>Next</button>
+          <button id="nextPage" class="btn secondary" type="button" disabled>Next</button>
         </div>
       </div>
     </section>
-
   </main>
 
-  <script defer src="{{ url_for('static', filename='audit.js') }}"></script>
+  <!-- Page logic (filters, sort, CSV) -->
+  <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/audit.js') }}"></script>
 </body>
 </html>

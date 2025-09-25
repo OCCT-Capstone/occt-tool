@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OCCT Compliance Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Reuse your main CSS for nicer print; optional -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    /* Print-friendly minimal overrides */
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; margin: 2rem; }
+    h1 { margin-bottom: .25rem; }
+    .muted { color: #666; font-size: .9rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #eee; vertical-align: top; }
+    .kpis { display: flex; gap: 1rem; }
+    .kpi { border: 1px solid #eee; border-radius: 8px; padding: .75rem 1rem; min-width: 140px; }
+    .kpi .val { font-size: 1.25rem; font-weight: 700; }
+    .pill { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.8rem; background:#eef; }
+    .w100 { width:100% }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OCCT Compliance Report</h1>
+    <div class="muted">
+      Mode: {{ mode|capitalize }} • Generated: {{ generated_at.strftime("%Y-%m-%d %H:%M:%SZ") }}
+    </div>
+    <div class="no-print" style="margin:.5rem 0 1rem">
+      <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>Overview</h2>
+    <div class="kpis">
+      <div class="kpi">
+        <div>Compliance</div>
+        <div class="val">{{ (dashboard.summary.compliant_percent or 0)|round|int }}%</div>
+      </div>
+      <div class="kpi">
+        <div>Passed</div>
+        <div class="val">{{ dashboard.summary.passed_count or 0 }}</div>
+      </div>
+      <div class="kpi">
+        <div>Failed</div>
+        <div class="val">{{ dashboard.summary.failed_count or 0 }}</div>
+      </div>
+      <div class="kpi">
+        <div>Total checks</div>
+        <div class="val">{{ dashboard.summary.total_checks or 0 }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h3>Compliance Over Time</h3>
+      <table>
+        <thead><tr><th>Month</th><th>Compliant %</th><th>Non-compliant %</th></tr></thead>
+        <tbody>
+          {% for m in dashboard.monthly or [] %}
+          <tr>
+            <td>{{ m.month }}</td>
+            <td>{{ (m.compliant or 0)|round|int }}%</td>
+            <td>{{ (m.noncompliant or 0)|round|int }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if dashboard.get('_note_monthly') %}
+      <div class="muted">Monthly series provided by samples/dashboard.json</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Remediation Overview</h3>
+      <table class="w100">
+        <thead><tr><th>Category</th><th>Failed</th></tr></thead>
+        <tbody>
+          {% for row in remediation.by_category %}
+          <tr><td>{{ row.category }}</td><td>{{ row.failed }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <br>
+      <table class="w100">
+        <thead><tr><th>Top Controls (by failures)</th><th>Failed</th></tr></thead>
+        <tbody>
+          {% for row in remediation.top_controls %}
+          <tr><td>{{ row.control }}</td><td>{{ row.failed }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted">Distinct accounts impacted (failed): {{ remediation.accounts_impacted }}</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Recent Failed Events</h3>
+    <table>
+      <thead><tr><th>Time (UTC)</th><th>Category</th><th>Control</th><th>Account</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for r in remediation.recent_failed %}
+        <tr>
+          <td>{{ r.time }}</td>
+          <td><span class="pill">{{ r.category or '' }}</span></td>
+          <td>{{ r.control or '' }}</td>
+          <td>{{ r.account or '' }}</td>
+          <td>{{ r.description or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

@@ -4,12 +4,51 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Remediation</title>
+
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-overrides.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/remediation.css') }}">
+
+  <!-- page-local styles (small, scoped) -->
+  <style>
+    .rem-grid{ display:grid; gap:1.2rem; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 900px){ .rem-grid{ grid-template-columns: 1fr; } }
+
+    .fix-list{ display:grid; gap:.8rem; }
+    .fix{
+      background: var(--card);
+      border:1px solid var(--ring);
+      border-radius: 12px;
+      padding: .9rem .95rem;
+      box-shadow: var(--shadow);
+    }
+    .fix.fail{ border-left:6px solid var(--red); }
+    .fix.pass{ border-left:6px solid var(--green); }
+
+    .fix .head{
+      display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.35rem;
+    }
+    .fix .title{ font-weight:800; }
+    .fix .meta{ color:var(--muted); font-size:.92rem; display:flex; gap:.8rem; flex-wrap:wrap; }
+    .fix .hint{ margin-top:.45rem; }
+    .empty{ color:var(--muted); padding:.6rem 0; }
+
+    /* reuse existing badge palette */
+    .badge{
+      display:inline-block; padding:.25rem .6rem; border-radius:999px; font-weight:700; font-size:.85rem;
+      background:#e5e7eb; color:#111827;
+    }
+    .badge.sys{ background: rgba(245,158,11,.18); color:#92400e; }
+    .badge.sec{ background: rgba(59,130,246,.18); color:#1e40af; }
+    .badge.acc{ background: rgba(16,185,129,.18); color:#065f46; }
+  </style>
 </head>
 <body class="dash-body">
 
-  <!-- Top Nav -->
+  <!-- Top bar -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
@@ -21,144 +60,29 @@
   </nav>
 
   <main class="container">
+    <h1 class="page-title">Remediation</h1>
+    <p class="muted" style="margin: .2rem 0 1rem;">Suggestions are based on the latest audit results.</p>
 
-    <!-- KPI Row -->
-    <section class="grid grid-3">
-      <!-- Compliance Status (Donut) -->
+    <section class="rem-grid">
+      <!-- Needs attention -->
       <div class="card">
-        <h3>Compliance Status</h3>
-        <div class="donut-wrap">
-          <svg class="donut" viewBox="0 0 36 36" aria-label="Donut chart">
-            <!-- Track -->
-            <path class="donut-track"
-                  d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"/>
-            <!-- Value -->
-            <path id="donut-value"
-                  class="donut-value"
-                  stroke-dasharray="48, 100"
-                  d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"/>
-            <!-- Cap -->
-            <circle class="donut-cap" cx="18" cy="2" r="1.1"></circle>
-          </svg>
-          <div class="donut-center">
-            <div class="donut-number" id="nonCompliantPct">48%</div>
-            <div class="donut-sub">Non-Compliant</div>
-          </div>
+        <h3>Needs attention (Failed)</h3>
+        <div id="fixList" class="fix-list">
+          <!-- JS populates -->
         </div>
       </div>
 
-      <!-- Audit Checks -->
+      <!-- Compliant -->
       <div class="card">
-        <h3>Audit Checks</h3>
-        <div class="kpi-big">152</div>
-        <div class="kpi-row">
-          <span class="muted">Passed</span><span>74</span>
-        </div>
-        <div class="kpi-row">
-          <span class="muted">Failed</span><span>78</span>
-        </div>
-      </div>
-
-      <!-- Account Activity -->
-      <div class="card">
-        <h3>Account Activity</h3>
-        <div class="kpi-big">5</div>
-        <div class="kpi-row">
-          <span class="muted">Issues Detected</span><span>5</span>
-        </div>
-        <div class="kpi-row">
-          <span class="muted">8 accounts</span><span></span>
+        <h3>Compliant (Informational)</h3>
+        <div id="okList" class="fix-list">
+          <!-- JS populates -->
         </div>
       </div>
     </section>
-
-    <!-- Charts / Log Row -->
-    <section class="grid grid-2">
-      <!-- Compliance Over Time (Bars) -->
-      <div class="card">
-        <h3>Compliance Over Time</h3>
-        <div class="legend">
-          <span class="key key-green"></span> Compliant
-          <span class="spacer"></span>
-          <span class="key key-red"></span> Non-Compliant
-        </div>
-        <div class="bars" id="barChart">
-          <!-- JS will render bars -->
-        </div>
-        <div class="axis-x">
-          <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span>
-        </div>
-      </div>
-
-      <!-- Audit Log -->
-      <div class="card">
-        <h3>Audit Log</h3>
-        <div class="table">
-          <div class="thead">
-            <div>Time</div><div>Category</div><div>Description</div>
-          </div>
-          <div class="trow">
-            <div>17:45</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Alertel repaits</div>
-          </div>
-          <div class="trow">
-            <div>16:20</div>
-            <div><span class="badge sec">Security</span></div>
-            <div>Susplitt sking</div>
-          </div>
-          <div class="trow">
-            <div>14:05</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Invunjate attack</div>
-          </div>
-          <div class="trow">
-            <div>12:37</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Debradrga rulst</div>
-          </div>
-          <div class="trow">
-            <div>12:30</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Traffic robinds</div>
-          </div>
-        </div>
-        <a class="link" href="#">42 recent</a>
-      </div>
-    </section>
-
   </main>
 
-  <script>
-    // --- Placeholder data (swap with API later) ---
-    const nonCompliantPercent = 48; // matches the mock
-    const monthly = [
-      { month: 'Jan', compliant: 78, noncompliant: 22 },
-      { month: 'Feb', compliant: 88, noncompliant: 12 },
-      { month: 'Mar', compliant: 80, noncompliant: 20 },
-      { month: 'Apr', compliant: 72, noncompliant: 28 },
-    ];
-
-    // Donut stroke-dasharray expects (value, 100-value)
-    const donut = document.getElementById('donut-value');
-    donut.setAttribute('stroke-dasharray', `${nonCompliantPercent}, 100`);
-    document.getElementById('nonCompliantPct').textContent = nonCompliantPercent + '%';
-
-    // Simple stacked bars (no libs)
-    const barChart = document.getElementById('barChart');
-    monthly.forEach(pt => {
-      const col = document.createElement('div');
-      col.className = 'barcol';
-      const green = document.createElement('div');
-      green.className = 'bar green';
-      green.style.height = pt.compliant + '%';
-      const red = document.createElement('div');
-      red.className = 'bar red';
-      red.style.height = pt.noncompliant + '%';
-      col.appendChild(green);
-      col.appendChild(red);
-      barChart.appendChild(col);
-    });
-  </script>
+  <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/remediation.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,316 @@
+/* =======================================
+   Global styles & Dashboard components
+   ======================================= */
+
+/* ----- Reset & base ----- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  background: #f5f7fa;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  text-align: center; /* Center default text; components may override */
+}
+
+/* (Legacy) Header/landing styles kept for compatibility */
+header {
+  background: #004080;
+  color: #fff;
+  text-align: center;
+  padding: 2rem 1rem;
+  border-bottom: 4px solid #0073e6;
+}
+header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+header p  { font-size: 1.2rem; font-weight: 300; }
+
+/* Main layout container */
+main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 900px; /* Dashboard overrides with .container below */
+  margin: 0 auto;
+}
+
+/* =======================================
+   Theme tokens
+   ======================================= */
+:root{
+  --bg: #f5f7fa;
+  --card: #fff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --nav: #0f172a;
+  --nav-accent: #111827;
+
+  /* accents (light) */
+  --green: #16a34a;
+  --red:   #ef4444;
+  --sys: #f59e0b;
+  --sec: #3b82f6;
+  --acc: #10b981;
+
+  --ring: #e5e7eb;
+  --shadow: 0 8px 30px rgba(0,0,0,0.07);
+  --radius: 16px;
+  --link: #2563eb;
+
+  /* Donut */
+  --donut-track: #ffe1e1;
+  --donut-value: #fb7185;
+  --donut-cap:   #fb7185;
+
+  /* Pills / badges */
+  --pill-bg: #e5e7eb;
+  --pill-fg: #0b1220;
+  --pill-sys-bg: rgba(245,158,11,.18); --pill-sys-fg:#92400e;
+  --pill-sec-bg: rgba(59,130,246,.18); --pill-sec-fg:#1e40af;
+  --pill-acc-bg: rgba(16,185,129,.18); --pill-acc-fg:#065f46;
+  --pill-pass-bg: rgba(34,197,94,.18);  --pill-pass-fg:#166534;
+  --pill-fail-bg: rgba(239,68,68,.18);  --pill-fail-fg:#7f1d1d;
+
+  /* Form fields (light) */
+  --field-bg:#ffffff;
+  --field-fg:#1f2937;
+  --field-border:#d1d5db;
+  --field-placeholder:#9ca3af;
+  --field-focus:#60a5fa;
+}
+
+/* Dark theme variables (softer) */
+:root.theme-dark{
+  color-scheme: dark;
+
+  --bg:#0b1220;
+  --card:#0f172a;
+  --text:#e5e7eb;
+  --muted:#90a0b8;
+  --ring:#1b2435;
+  --shadow: 0 8px 30px rgba(0,0,0,0.45);
+
+  --link:#7cb7ff;
+
+  /* softer accents */
+  --green:#2aa461;
+  --red:#f87171;
+
+  /* Donut (muted blue) */
+  --donut-track:#1a2335;
+  --donut-value:#5aa7ff;
+  --donut-cap:  #5aa7ff;
+
+  /* Pills (dark) */
+  --pill-bg: rgba(148,163,184,.14);
+  --pill-fg: #e2e8f0;
+  --pill-sys-bg: rgba(245,158,11,.22); --pill-sys-fg:#f6d089;
+  --pill-sec-bg: rgba(59,130,246,.22); --pill-sec-fg:#a5c7ff;
+  --pill-acc-bg: rgba(16,185,129,.22); --pill-acc-fg:#9be8c8;
+  --pill-pass-bg: rgba(42,164,97,.20);  --pill-pass-fg:#a7f3c1;
+  --pill-fail-bg: rgba(248,113,113,.20);--pill-fail-fg:#fecaca;
+
+  /* Form fields (dark) */
+  --field-bg:#0c1426;
+  --field-fg:#e5eefc;
+  --field-border:#243046;
+  --field-placeholder:#9aa7bf;
+  --field-focus:#7cb7ff;
+}
+
+.dash-body{
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* =======================================
+   Top bar
+   ======================================= */
+.topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.2rem;
+  background: linear-gradient(180deg, #0b1220, #0f172a);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.topbar .brand { position: absolute; left: 1.2rem; font-weight: 800; letter-spacing: .5px; }
+.topbar .navlinks { list-style:none; display:flex; gap:1.5rem; margin:0; padding:0; justify-content:center; }
+.topbar .navlinks a { color:#cbd5e1; text-decoration:none; font-weight:500; }
+.topbar .navlinks .active a { color:#fff; }
+
+/* Container + grids */
+.container{ max-width: 1100px; margin: 1.2rem auto; padding: 0 1rem; }
+.grid{ display:grid; gap:1.2rem; margin-bottom:1.2rem; }
+.grid-3{ grid-template-columns: repeat(3, 1fr); }
+.grid-2{ grid-template-columns: 1.6fr 1.4fr; }
+@media (max-width: 900px){ .grid-3, .grid-2{ grid-template-columns:1fr; } }
+
+/* Card */
+.card{
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1rem 1.2rem;
+  border: 1px solid var(--ring);
+}
+.card h3{ margin-bottom: 0.8rem; }
+
+/* =======================================
+   Buttons (exact size/shape kept)
+   ======================================= */
+.btn {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;      /* ORIGINAL padding */
+  background: #0073e6;        /* ORIGINAL primary bg */
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;          /* ORIGINAL radius */
+  transition: background 0.3s;
+}
+.btn:hover       { background: #005bb5; }
+.btn.secondary   { background: #555;  color:#fff; }
+.btn.secondary:hover { background: #333; }
+.btn.danger      { background: #b91c1c; color:#fff; }
+.btn.danger:hover{ background: #991b1b; }
+
+/* Kill native bevel on real <button>/<input> without changing size */
+button.btn,
+input[type="button"].btn,
+input[type="submit"].btn,
+input[type="reset"].btn {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none;                  /* remove 3D/outset border */
+  border-radius: 5px;            /* keep your shape */
+  padding: 0.8rem 1.5rem;        /* keep your size */
+}
+/* Accessible, subtle focus ring (no layout change) */
+button.btn:focus-visible,
+input[type="button"].btn:focus-visible,
+input[type="submit"].btn:focus-visible,
+input[type="reset"].btn:focus-visible,
+a.btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--field-focus) 45%, transparent);
+  outline-offset: 2px;
+}
+
+/* =======================================
+   KPI
+   ======================================= */
+.kpi-big { font-size: 3rem; font-weight: 700; margin: .2rem 0 .6rem; }
+.kpi-row { display:flex; justify-content:space-between; padding:.15rem 0; }
+.muted   { color: var(--muted); }
+
+/* Donut */
+.donut-wrap{ position:relative; width:180px; height:180px; margin:.2rem auto; }
+.donut{ width:100%; height:100%; transform: rotate(-90deg); }
+.donut-track{ fill:none; stroke:var(--donut-track); stroke-width:3.5; }
+.donut-value{ fill:none; stroke:var(--donut-value); stroke-width:3.5; stroke-linecap:round; transition: stroke-dasharray .4s ease; }
+.donut-cap{ fill: var(--donut-cap); transform-origin:center; }
+:root.theme-dark .donut-value{ opacity:.82; }
+
+.donut-center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+.donut-number{ font-size:2.2rem; font-weight:700; }
+.donut-sub{ color: var(--muted); }
+
+/* Bars */
+.legend{ display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; color:var(--muted); }
+.key{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.2rem; vertical-align:middle; }
+.key-green{ background:var(--green); }
+.key-red{ background:var(--red); }
+:root.theme-dark .key-green{ background: color-mix(in srgb, var(--green) 75%, #0f172a 25%); }
+:root.theme-dark .key-red{   background: color-mix(in srgb, var(--red)   75%, #0f172a 25%); }
+
+.bars{ display:flex; align-items:flex-end; gap:1rem; height:180px; padding:.5rem .6rem .2rem; border:1px dashed var(--ring); border-radius:12px; }
+.barcol{ width:40px; display:flex; flex-direction:column; justify-content:flex-end; gap:4px; }
+.bar{ width:100%; border-radius:6px; }
+.bar.green{ background:var(--green); }
+.bar.red{   background:var(--red); }
+:root.theme-dark .bar.green{ background: color-mix(in srgb, var(--green) 78%, #0f172a 22%); }
+:root.theme-dark .bar.red{   background: color-mix(in srgb, var(--red)   78%, #0f172a 22%); }
+
+.axis-x{ display:flex; justify-content:space-between; color:var(--muted); font-size:.9rem; padding:.4rem .2rem 0; }
+
+/* Audit preview (index) */
+.table{ display:grid; gap:8px; }
+.thead, .trow{ display:grid; grid-template-columns:90px 120px 1fr; align-items:center; }
+.thead{ color:var(--muted); font-size:.9rem; padding-bottom:.2rem; border-bottom:1px solid var(--ring); }
+.trow{ padding:.25rem 0; border-bottom:1px dashed var(--ring); }
+
+/* Pills / badges */
+.badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:var(--pill-bg); color:var(--pill-fg); font-weight:600; font-size:.85rem; }
+.badge.sys{ background:var(--pill-sys-bg); color:var(--pill-sys-fg); }
+.badge.sec{ background:var(--pill-sec-bg); color:var(--pill-sec-fg); }
+.badge.acc{ background:var(--pill-acc-bg); color:var(--pill-acc-fg); }
+
+.outcome{ display:inline-block; padding:2px 8px; border-radius:999px; font-weight:700; }
+.outcome.pass{ background:var(--pill-pass-bg); color:var(--pill-pass-fg); }
+.outcome.fail{ background:var(--pill-fail-bg); color:var(--pill-fail-fg); }
+
+/* Links */
+.link{ display:inline-block; margin-top:.6rem; text-decoration:none; color:var(--link); font-weight:600; }
+.link:hover{ text-decoration:underline; }
+
+/* Chips (shared) */
+.chip{ display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .6rem; border-radius:999px; border:1px solid var(--ring); background:var(--card); color:var(--text); cursor:pointer; user-select:none; }
+.chip.active{ background: rgba(148,163,184,.22); border-color: var(--muted); }
+
+/* Compliance Over Time alignment fix */
+.bars { display:grid; grid-auto-flow:column; grid-auto-columns:44px; gap:16px; align-items:end; height:180px; padding:.5rem .6rem .2rem; border:1px dashed var(--ring); border-radius:12px; }
+.barcol { height:100%; display:flex; flex-direction:column; justify-content:flex-end; gap:4px; }
+.axis-x { display:grid; grid-auto-flow:column; grid-auto-columns:44px; gap:16px; justify-content:start; padding:.4rem .6rem 0; color:var(--muted); font-size:.9rem; }
+.axis-x span { text-align:center; }
+
+/* =======================================
+   Global form field styling
+   ======================================= */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+select,
+textarea,
+.input,
+.select {
+  background: var(--field-bg);
+  color: var(--field-fg);
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  padding: .55rem .7rem;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--field-placeholder); opacity: .9; }
+
+/* Focus ring */
+input:focus,
+select:focus,
+textarea:focus,
+.input:focus,
+.select:focus {
+  border-color: var(--field-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--field-focus) 35%, transparent);
+}
+
+/* Chrome/Safari autofill */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--field-fg);
+  -webkit-box-shadow: 0 0 0px 1000px var(--field-bg) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Make selects inherit text color (some browsers force black) */
+select { color: inherit; }

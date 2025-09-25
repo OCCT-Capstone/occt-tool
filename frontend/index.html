@@ -1,165 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Meta & head -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Dashboard</title>
+
+  <!-- Global site helpers (exposes window.occt.api) -->
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
+  <!-- Favicon & global styles (served by Flask static) -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-overrides.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
+
 <body class="dash-body">
 
-  <!-- Top Nav -->
-    <nav class="topbar">
+  <!-- ========== Top Navigation ========== -->
+  <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks">
-        <li class="active"><a href="/">Dashboard</a></li>
-        <li><a href="/audit">Audit</a></li>
-        <li><a href="/remediation">Remediation</a></li>
-        <li><a href="/settings">Settings</a></li>
+      <li class="active"><a href="/">Dashboard</a></li>
+      <li><a href="/audit">Audit</a></li>
+      <li><a href="/remediation">Remediation</a></li>
+      <li><a href="/settings">Settings</a></li>
     </ul>
-    </nav>
+  </nav>
 
-
+  <!-- ========== Main Content ========== -->
   <main class="container">
 
-    <!-- KPI Row -->
+    <!-- ===== KPI Row (3 cards) ===== -->
     <section class="grid grid-3">
       <!-- Compliance Status (Donut) -->
       <div class="card">
         <h3>Compliance Status</h3>
+
+        <!-- Donut chart (SVG) -->
         <div class="donut-wrap">
           <svg class="donut" viewBox="0 0 36 36" aria-label="Donut chart">
             <!-- Track -->
-            <path class="donut-track"
-                  d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"/>
-            <!-- Value -->
-            <path id="donut-value"
-                  class="donut-value"
-                  stroke-dasharray="48, 100"
-                  d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"/>
-            <!-- Cap -->
+            <path
+              class="donut-track"
+              d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"
+            />
+            <!-- Value (dasharray updated via JS) -->
+            <path
+              id="donut-value"
+              class="donut-value"
+              stroke-dasharray="0, 100"
+              d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"
+            />
+            <!-- Cap (visual end point) -->
             <circle class="donut-cap" cx="18" cy="2" r="1.1"></circle>
           </svg>
+
+          <!-- Donut center content -->
           <div class="donut-center">
-            <div class="donut-number" id="nonCompliantPct">48%</div>
-            <div class="donut-sub">Non-Compliant</div>
+            <div class="donut-number" id="nonCompliantPct">—</div>
+            <div class="donut-sub">Compliance</div>
           </div>
         </div>
       </div>
 
-      <!-- Audit Checks -->
+      <!-- Audit Checks (numeric KPIs) -->
       <div class="card">
         <h3>Audit Checks</h3>
-        <div class="kpi-big">152</div>
+        <div class="kpi-big" id="kpiTotal">—</div>
         <div class="kpi-row">
-          <span class="muted">Passed</span><span>74</span>
+          <span class="muted">Passed</span><span id="kpiPassed">—</span>
         </div>
         <div class="kpi-row">
-          <span class="muted">Failed</span><span>78</span>
+          <span class="muted">Failed</span><span id="kpiFailed">—</span>
         </div>
       </div>
 
-      <!-- Account Activity -->
+      <!-- Account Activity (numeric KPIs) -->
       <div class="card">
         <h3>Account Activity</h3>
-        <div class="kpi-big">5</div>
+        <div class="kpi-big" id="kpiIssues">—</div>
         <div class="kpi-row">
-          <span class="muted">Issues Detected</span><span>5</span>
+          <span class="muted">Issues Detected</span><span id="kpiIssuesDetail">—</span>
         </div>
         <div class="kpi-row">
-          <span class="muted">8 accounts</span><span></span>
+          <span class="muted">Accounts</span><span id="kpiAccounts">—</span>
         </div>
       </div>
     </section>
 
-    <!-- Charts / Log Row -->
+    <!-- ===== Charts / Log Row (2 cards) ===== -->
     <section class="grid grid-2">
-      <!-- Compliance Over Time (Bars) -->
+      <!-- Compliance Over Time (bars) -->
       <div class="card">
         <h3>Compliance Over Time</h3>
+
+        <!-- Simple legend -->
         <div class="legend">
           <span class="key key-green"></span> Compliant
           <span class="spacer"></span>
           <span class="key key-red"></span> Non-Compliant
         </div>
-        <div class="bars" id="barChart">
-          <!-- JS will render bars -->
-        </div>
-        <div class="axis-x">
-          <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span>
-        </div>
+
+        <!-- Bars placeholder; JS injects columns -->
+        <div class="bars" id="barChart"></div>
+
+        <!-- X-axis labels (populated from data) -->
+        <div class="axis-x" id="axisX"></div>
       </div>
 
-      <!-- Audit Log -->
+      <!-- Audit Log (preview) -->
       <div class="card">
         <h3>Audit Log</h3>
-        <div class="table">
-          <div class="thead">
-            <div>Time</div><div>Category</div><div>Description</div>
-          </div>
-          <div class="trow">
-            <div>17:45</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Alertel repaits</div>
-          </div>
-          <div class="trow">
-            <div>16:20</div>
-            <div><span class="badge sec">Security</span></div>
-            <div>Susplitt sking</div>
-          </div>
-          <div class="trow">
-            <div>14:05</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Invunjate attack</div>
-          </div>
-          <div class="trow">
-            <div>12:37</div>
-            <div><span class="badge sys">System</span></div>
-            <div>Debradrga rulst</div>
-          </div>
-          <div class="trow">
-            <div>12:30</div>
-            <div><span class="badge acc">Account</span></div>
-            <div>Traffic robinds</div>
-          </div>
-        </div>
-        <a class="link" href="#">42 recent</a>
+
+        <!-- Container JS will fill -->
+        <div class="table" id="auditPreview"></div>
+
+        <!-- Link to full audit page -->
+        <a class="link" href="/audit">See all</a>
       </div>
     </section>
 
   </main>
 
-  <script>
-    // --- Placeholder data (swap with API later) ---
-    const nonCompliantPercent = 48; // matches the mock
-    const monthly = [
-      { month: 'Jan', compliant: 78, noncompliant: 22 },
-      { month: 'Feb', compliant: 88, noncompliant: 12 },
-      { month: 'Mar', compliant: 80, noncompliant: 20 },
-      { month: 'Apr', compliant: 72, noncompliant: 28 },
-    ];
-
-    // Donut stroke-dasharray expects (value, 100-value)
-    const donut = document.getElementById('donut-value');
-    donut.setAttribute('stroke-dasharray', `${nonCompliantPercent}, 100`);
-    document.getElementById('nonCompliantPct').textContent = nonCompliantPercent + '%';
-
-    // Simple stacked bars (no libs)
-    const barChart = document.getElementById('barChart');
-    monthly.forEach(pt => {
-      const col = document.createElement('div');
-      col.className = 'barcol';
-      const green = document.createElement('div');
-      green.className = 'bar green';
-      green.style.height = pt.compliant + '%';
-      const red = document.createElement('div');
-      red.className = 'bar red';
-      red.style.height = pt.noncompliant + '%';
-      col.appendChild(green);
-      col.appendChild(red);
-      barChart.appendChild(col);
-    });
-  </script>
+  <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 </html>

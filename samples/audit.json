@@ -1,0 +1,14 @@
+[
+  { "time": "2025-04-22T17:45:00Z", "category": "System",   "control": "Service hardening",        "outcome": "Failed", "account": "SRV-WS001", "description": "Unexpected service enabled: Telnet" },
+  { "time": "2025-04-22T16:20:00Z", "category": "Security", "control": "Password complexity",      "outcome": "Passed", "account": "AD-Policy",  "description": "Complexity enabled per policy" },
+  { "time": "2025-04-22T14:05:00Z", "category": "Account",  "control": "Dormant account disable",  "outcome": "Failed", "account": "j.smith",    "description": "Account inactive 120+ days" },
+  { "time": "2025-04-22T12:37:00Z", "category": "System",   "control": "Firewall enabled",         "outcome": "Passed", "account": "SRV-WS001", "description": "All profiles enabled" },
+  { "time": "2025-04-22T12:30:00Z", "category": "Account",  "control": "MFA enforced",             "outcome": "Passed", "account": "All users",  "description": "90% MFA coverage" },
+  { "time": "2025-04-21T10:01:00Z", "category": "Security", "control": "Minimum password length",  "outcome": "Failed", "account": "Domain",     "description": "Observed 8, expected >=14" },
+  { "time": "2025-04-20T09:12:00Z", "category": "System",   "control": "SMB signing required",     "outcome": "Passed", "account": "SRV-FS01",   "description": "Enforced via GPO" },
+  { "time": "2025-04-19T08:45:00Z", "category": "Account",  "control": "Privileged account review","outcome": "Failed", "account": "AdminGroup", "description": "3 inactive privileged accounts" },
+  { "time": "2025-04-18T07:30:00Z", "category": "Security", "control": "Antivirus up to date",     "outcome": "Passed", "account": "SRV-WS001", "description": "Definitions current" },
+  { "time": "2025-04-17T06:15:00Z", "category": "System",   "control": "OS patches applied",       "outcome": "Failed", "account": "SRV-DB01",   "description": "Missing critical updates" },
+  { "time": "2025-04-16T05:50:00Z", "category": "Account",  "control": "User account lockout",     "outcome": "Passed", "account": "Domain",     "description": "Lockout policy enforced" },
+  { "time": "2025-04-15T04:30:00Z", "category": "Security", "control": "Data encryption",          "outcome": "Failed", "account": "SRV-FS01",   "description": "Sensitive data unencrypted" }
+]

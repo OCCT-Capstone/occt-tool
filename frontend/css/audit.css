@@ -1,12 +1,19 @@
-/* --- Page title --- */
+/* =======================================
+   Audit page styles
+   - Toolbar (filters)
+   - Table + badges
+   - Footer/pager
+   ======================================= */
+
+/* --- Page title spacing --- */
 .page-title{
   margin: .4rem 0 1rem;
 }
 
-/* --- Toolbar --- */
+/* --- Toolbar (filters & actions) --- */
 .toolbar{
   display: grid;
-  grid-template-columns: 2fr repeat(2, 1fr) 2fr 1fr auto;
+  grid-template-columns: 2fr repeat(2, 1fr) 2fr 1fr auto; /* search | dates | category | outcome | tools */
   gap: 1rem;
   align-items: end;
   margin-bottom: 1rem;
@@ -14,8 +21,10 @@
 @media (max-width: 1000px){
   .toolbar{ grid-template-columns: 1fr 1fr; }
 }
+
 .field{ display: flex; flex-direction: column; gap: .4rem; }
 .field label{ color: var(--muted); font-size: .9rem; }
+
 .input{
   background: #fff;
   border: 1px solid var(--ring);
@@ -24,9 +33,12 @@
   outline: none;
 }
 .select{ padding-right: 2rem; }
-.tools{ display:flex; gap:.6rem; justify-self:end; align-items:center; }
 
-/* chips */
+.tools{
+  display:flex; gap:.6rem; justify-self:end; align-items:center;
+}
+
+/* --- Category chips --- */
 .chips{ display: flex; gap: .4rem; flex-wrap: wrap; }
 .chip{
   background: #eef2ff;
@@ -39,18 +51,22 @@
 }
 .chip.active{ background: #dbeafe; border-color:#bfdbfe; }
 
-/* --- Table --- */
+/* --- Table wrapper --- */
 .table-card{ margin-top: .2rem; }
+
 .table-wrap{
-  overflow: auto;
+  overflow: auto;                  /* horizontal/vertical scroll if needed */
   border: 1px solid var(--ring);
   border-radius: 12px;
 }
+
+/* --- Table proper --- */
 .audit-table{
   width: 100%;
-  border-collapse: separate;
+  border-collapse: separate;       /* so sticky header looks clean */
   border-spacing: 0;
 }
+
 .audit-table thead th{
   position: sticky; top: 0;
   background: #f8fafc;
@@ -58,18 +74,20 @@
   font-weight: 700;
   padding: .8rem .9rem;
   border-bottom: 1px solid var(--ring);
-  cursor: pointer; /* sort hint */
+  cursor: pointer;                 /* indicates sortable cols */
 }
+
 .audit-table tbody td{
   padding: .75rem .9rem;
   border-bottom: 1px dashed var(--ring);
   vertical-align: top;
 }
+
 .audit-table tbody tr:hover{
   background: #fbfdff;
 }
 
-/* badges & outcome */
+/* --- Badges & outcome pills --- */
 .badge{
   display:inline-block; padding: .25rem .6rem; border-radius: 999px;
   font-weight:600; font-size: .85rem;
@@ -84,14 +102,14 @@
 .outcome.pass{ background: rgba(16,185,129,.15); color:#065f46; }
 .outcome.fail{ background: rgba(239,68,68,.15); color:#7f1d1d; }
 
-/* footer */
+/* --- Footer (count + pager) --- */
 .table-footer{
   display:flex; justify-content:space-between; align-items:center;
   padding:.8rem .2rem;
 }
 .count{ color: var(--muted); }
 
-/* buttons reuse */
+/* --- Buttons (rely on global .btn + variants) --- */
 .btn{ display:inline-block; padding:.55rem .9rem; border-radius:10px; background:#2563eb; color:#fff; border:0; cursor:pointer; }
 .btn.secondary{ background:#e5e7eb; color:#111827; }
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
