@@ -25,7 +25,7 @@ https://github.com/OCCT-Capstone/occt-tool.git
 
 ## 🔹 2. Create a Virtual Environment
 
-Open the built-in terminal in VS Code:
+Open the built-in terminal in VS Code: 
 
 **macOS / Linux**
 ```bash
