@@ -27,7 +27,7 @@
 - id: AU-010
   title: "Firewall default inbound = Block (all profiles)"
   severity: high
-  expr: "win.firewall.Domain.default_inbound == 'Block' and win.firewall.Private.default_inbound == 'Block' and win.firewall.Public.default_inbound == 'Block'"
+  when: "win.firewall.Domain.default_inbound == 'Block' and win.firewall.Private.default_inbound == 'Block' and win.firewall.Public.default_inbound == 'Block'"
   pass: "Default inbound action is Block on Domain, Private, and Public."
   fail: "One or more profiles have inbound default set to Allow."
   remediation: >
@@ -38,7 +38,7 @@
 - id: AU-011
   title: "Firewall enabled (Domain/Private/Public)"
   severity: high
-  expr: "win.firewall.Domain.enabled == true and win.firewall.Private.enabled == true and win.firewall.Public.enabled == true"
+  when: "win.firewall.Domain.enabled == true and win.firewall.Private.enabled == true and win.firewall.Public.enabled == true"
   pass: "Windows Defender Firewall is enabled on all profiles."
   fail: "Firewall is disabled on one or more profiles."
   remediation: >
@@ -49,7 +49,7 @@
 - id: AU-012
   title: "No inbound RDP/SMB/WinRM allowed on Public profile"
   severity: high
-  expr: "win.firewall.Public.inbound_allow_rdp == false and win.firewall.Public.inbound_allow_smb == false and win.firewall.Public.inbound_allow_winrm == false"
+  when: "win.firewall.Public.inbound_allow_rdp == false and win.firewall.Public.inbound_allow_smb == false and win.firewall.Public.inbound_allow_winrm == false"
   pass: "RDP/SMB/WinRM are not exposed to the internet on the Public profile."
   fail: "Public profile allows inbound RDP and/or SMB and/or WinRM."
   remediation: >
@@ -62,7 +62,7 @@
 - id: AU-013
   title: "Inbound block rules present (hygiene)"
   severity: medium
-  expr: "win.firewall.inbound_block_enabled_count > 0"
+  when: "win.firewall.inbound_block_enabled_count > 0"
   pass: "At least one inbound block rule is present."
   fail: "No enabled inbound block rules detected (policy may be overly permissive)."
   remediation: >
@@ -70,3 +70,109 @@
     or review inbound allow set for least privilege. Example:
     `New-NetFirewallRule -DisplayName 'Block Legacy SMB' -Direction Inbound -Action Block -Protocol TCP -LocalPort 139,445 -Profile Domain,Private,Public`.
 
+# FMT_SMR.1 — Admins membership minimal
+- id: AU-026
+  title: "Administrators group members approved"
+  severity: high
+  when: "win.admins.checked == true and win.admins.unauthorized_count == 0"
+  pass: "Only approved identities in Administrators."
+  fail: "Unexpected account(s) are members of Administrators."
+  remediation: >
+    Review and remove unapproved members:
+    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
+
+# FAU_SAR.1 — Audit log retention / size
+- id: AU-021
+  title: "Security log retained or sized appropriately"
+  severity: medium
+  when: "win.evtx.security.retention_enabled == true or win.evtx.security.max_size_mb >= 128"
+  pass: "Security log retained or ≥128MB."
+  fail: "Security log not retained and <128MB."
+  remediation: >
+    Enable retention: wevtutil sl Security /rt:true
+    or increase size: wevtutil sl Security /ms:134217728
+
+# FPT_STM.1 — Time service healthy
+- id: AU-023
+  title: "Time service is healthy and recently synced"
+  severity: medium
+  when: "win.time.service_running == true and win.time.start_type == 'Automatic' and win.time.source != 'Local CMOS Clock' and win.time.hours_since_last_sync <= 24"
+  pass: "W32Time running, Automatic, valid source, synced ≤24h."
+  fail: "Time service not running/auto, invalid source, or stale sync."
+  remediation: >
+    Set-Service w32time -StartupType Automatic; Start-Service w32time
+    w32tm /config /syncfromflags:manual /manualpeerlist:'time.windows.com,0x8'
+    w32tm /resync
+
+# FAU_STG.1 — Protect audit log files (Security.evtx ACLs)
+- id: AU-022
+  title: "Security.evtx write access restricted"
+  severity: high
+  when: "win.evtx.security.acl_checked == true and win.evtx.security.write_offender_count == 0"
+  pass: "Only SYSTEM/Administrators/EventLog have write access."
+  fail: "Extra principals have write access to Security.evtx."
+  remediation: >
+    icacls %SystemRoot%\System32\winevt\Logs\Security.evtx /inheritance:r
+    icacls ... /grant:r "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" "NT SERVICE\EventLog:(M)"
+
+# FIA_SOS.1 — Password complexity & max length/age
+- id: AU-028
+  title: "Password complexity and length/age"
+  severity: medium
+  when: "win.pw.complexity_required == true and win.pw.min_length >= 8 and win.pw.max_age_days <= 365"
+  pass: "Complexity on, min length ≥8, max age ≤365 days."
+  fail: "Complexity off or min length/age policy too weak."
+  remediation: >
+    Set via Local Security Policy or GPO:
+    Password must meet complexity requirements = Enabled;
+    Minimum password length ≥ 8; Maximum password age ≤ 365.
+
+# FAU_GEN.2 — Log content has key fields (health)
+- id: AU-027
+  title: "Security events carry key fields"
+  severity: low
+  when: "win.evtx.security.sample_has_key_fields == true"
+  pass: "Recent events include ID, time, and target user."
+  fail: "Events missing key fields; check logging pipeline."
+  remediation: >
+    Verify audit policy and Windows Event Log service; ensure no filtering drops key fields.
+
+# FIA_UAU.1 — Built-in Administrator disabled
+- id: AU-024
+  title: "Built-in Administrator (RID 500) disabled"
+  severity: high
+  when: "win.local.admin500_enabled == false"
+  pass: "Built-in Administrator account is disabled."
+  fail: "Built-in Administrator account is enabled."
+  remediation: >
+    Disable-LocalUser -Name 'Administrator' (or via GPO).
+
+# FIA_SOS.2 — Password history & minimum age
+- id: AU-029
+  title: "Password history and minimum age"
+  severity: low
+  when: "win.pw.history_size >= 5 and win.pw.min_age_days >= 1"
+  pass: "History ≥ 5 and min age ≥ 1 day."
+  fail: "History too short or min age is 0."
+  remediation: >
+    Enforce password history (≥5) and minimum age (≥1 day) via Local Security Policy or GPO.
+
+# FIA_UAU.2 — Guest disabled
+- id: AU-025
+  title: "Guest (RID 501) disabled"
+  severity: high
+  when: "win.local.guest501_enabled == false"
+  pass: "Guest account is disabled."
+  fail: "Guest account is enabled."
+  remediation: >
+    Disable-LocalUser -Name 'Guest' (or via GPO).
+
+# FIA_AFL.2 — Lockout duration & reset window
+- id: AU-030
+  title: "Account lockout duration/reset window"
+  severity: medium
+  when: "win.lockout.duration_minutes >= 15 and win.lockout.reset_minutes <= 15"
+  pass: "Lockout duration ≥15m and reset window ≤15m."
+  fail: "Lockout duration too short or reset window too long."
+  remediation: >
+    Set via Local Security Policy or GPO: Account lockout duration ≥15; Reset account lockout counter after ≤15.

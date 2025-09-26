@@ -1,5 +1,5 @@
 # backend/live_runner.py
-import os, json, time, queue, threading, subprocess, platform, shutil, uuid, datetime as dt
+import os, sys, json, time, queue, threading, subprocess, platform, shutil, uuid, datetime as dt
 from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 from .models import db, AuditEvent
@@ -156,7 +156,7 @@ class Runner:
         threading.Thread(target=self._scheduler_loop, name="occt-runner-scheduler", daemon=True).start()
         threading.Thread(target=self._worker_loop, name="occt-runner-worker", daemon=True).start()
         with self.app.app_context():
-            self.app.logger.info("Live runner started (ps=%s)", self.ps or "not found")
+            self.app.logger.info("Live runner started (ps=%s, py=%s)", self.ps or "not found", sys.executable)
         return self
 
     def enqueue_immediate(self, names: Optional[List[str]] = None) -> str:
@@ -212,13 +212,25 @@ class Runner:
             script = os.path.join(_project_root(self.app), script)
         if not os.path.exists(script):
             return {"ok": False, "error": f"script_not_found:{script}"}
-        if not self.ps:
-            return {"ok": False, "error": "powershell_not_found"}
 
-        args = [self.ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script]
+        # Decide runner based on extension
+        ext = os.path.splitext(script)[1].lower()
+        if ext == ".py":
+            args = [sys.executable, script]
+        else:
+            if not self.ps:
+                return {"ok": False, "error": "powershell_not_found"}
+            args = [self.ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script]
+
         try:
-            res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                                 check=False, creationflags=CREATE_NO_WINDOW)
+            res = subprocess.run(
+                args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                creationflags=CREATE_NO_WINDOW
+            )
         except Exception as ex:
             return {"ok": False, "error": f"spawn_failed:{ex}"}
 

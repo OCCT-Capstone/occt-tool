@@ -13,6 +13,13 @@
       "interval_seconds": 600,
       "enabled": true,
       "replace_previous": true
+    },
+    {
+      "name": "win_host",
+      "script": "collector/win_host_facts.py",
+      "interval_seconds": 900,
+      "enabled": true,
+      "replace_previous": true
     }
   ]
 }
