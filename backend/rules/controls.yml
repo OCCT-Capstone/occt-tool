@@ -21,3 +21,52 @@
   pass: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   fail: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   remediation: "Set 'Account lockout threshold' to 1–5 invalid attempts in Local Security Policy → Account Lockout Policy."
+
+# --- FIREWALL RULES WITH PASS/FAIL/REMEDIATION ---
+
+- id: AU-010
+  title: "Firewall default inbound = Block (all profiles)"
+  severity: high
+  expr: "win.firewall.Domain.default_inbound == 'Block' and win.firewall.Private.default_inbound == 'Block' and win.firewall.Public.default_inbound == 'Block'"
+  pass: "Default inbound action is Block on Domain, Private, and Public."
+  fail: "One or more profiles have inbound default set to Allow."
+  remediation: >
+    Set default inbound to Block for all profiles:
+    `Set-NetFirewallProfile -Profile Domain,Private,Public -DefaultInboundAction Block`.
+    Then verify: `Get-NetFirewallProfile | Select Name,DefaultInboundAction`.
+
+- id: AU-011
+  title: "Firewall enabled (Domain/Private/Public)"
+  severity: high
+  expr: "win.firewall.Domain.enabled == true and win.firewall.Private.enabled == true and win.firewall.Public.enabled == true"
+  pass: "Windows Defender Firewall is enabled on all profiles."
+  fail: "Firewall is disabled on one or more profiles."
+  remediation: >
+    Enable firewall for all profiles:
+    `Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True`.
+    Consider enforcing via GPO: Computer Config > Windows Defender Firewall > Domain/Private/Public Profile > Windows Defender Firewall: Protect all network connections = Enabled.
+
+- id: AU-012
+  title: "No inbound RDP/SMB/WinRM allowed on Public profile"
+  severity: high
+  expr: "win.firewall.Public.inbound_allow_rdp == false and win.firewall.Public.inbound_allow_smb == false and win.firewall.Public.inbound_allow_winrm == false"
+  pass: "RDP/SMB/WinRM are not exposed to the internet on the Public profile."
+  fail: "Public profile allows inbound RDP and/or SMB and/or WinRM."
+  remediation: >
+    Remove or scope inbound allow rules on Public:
+    - RDP: `Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'` or set Profile to Domain/Private only.
+    - SMB: remove custom 139/445 allows; keep File/Printer Sharing off on Public.
+    - WinRM: `Disable-NetFirewallRule -Name *WINRM*` or restrict to Domain/Private.
+    Prefer scoping to trusted subnets and to Domain/Private profiles.
+
+- id: AU-013
+  title: "Inbound block rules present (hygiene)"
+  severity: medium
+  expr: "win.firewall.inbound_block_enabled_count > 0"
+  pass: "At least one inbound block rule is present."
+  fail: "No enabled inbound block rules detected (policy may be overly permissive)."
+  remediation: >
+    Add explicit block rules for unwanted services/ports (e.g., legacy protocols),
+    or review inbound allow set for least privilege. Example:
+    `New-NetFirewallRule -DisplayName 'Block Legacy SMB' -Direction Inbound -Action Block -Protocol TCP -LocalPort 139,445 -Profile Domain,Private,Public`.
+

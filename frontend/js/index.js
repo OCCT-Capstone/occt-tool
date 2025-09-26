@@ -125,7 +125,9 @@
           <div class="trow">
             <div>${fmtTime(r.time)}</div>
             <div><span class="badge ${badgeClass(r.category)}">${escapeHTML(r.category || '')}</span></div>
-            <div>${escapeHTML(r.description || '')}</div>
+            <div class="desc" title="${escapeHTML(r.description || '')}">
+              ${escapeHTML(r.description || '')}
+            </div>
           </div>
         `).join('')}
       `;

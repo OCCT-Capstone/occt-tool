@@ -6,6 +6,13 @@
       "interval_seconds": 600,
       "enabled": true,
       "replace_previous": true
+    },
+    {
+      "name": "win_firewall",
+      "script": "collector/win_firewall_audit.ps1",
+      "interval_seconds": 600,
+      "enabled": true,
+      "replace_previous": true
     }
   ]
 }

@@ -240,7 +240,20 @@ a.btn:focus-visible {
 
 /* Audit preview (index) */
 .table{ display:grid; gap:8px; }
-.thead, .trow{ display:grid; grid-template-columns:90px 120px 1fr; align-items:center; }
+.thead, .trow{ display:grid; grid-template-columns:90px 120px minmax(0,1fr); align-items:center; }
+
+/* One-line ellipsis for Audit Log preview description */
+.table .trow > div:nth-child(3),
+.table .thead > div:nth-child(3) {
+  min-width: 0;              /* allow shrink in grid */
+}
+
+.table .trow > .desc {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .thead{ color:var(--muted); font-size:.9rem; padding-bottom:.2rem; border-bottom:1px solid var(--ring); }
 .trow{ padding:.25rem 0; border-bottom:1px dashed var(--ring); }
 
