@@ -1,6 +1,8 @@
+# PASSWORD CONTROLS (Account)
 - id: CC-PW-001
   title: "Password: Minimum Length"
-  category: "Security"
+  category: Account
+  severity: medium
   when: "win.password.min_length >= 14"
   pass: "Observed {{win.password.min_length}}, expected >=14"
   fail: "Observed {{win.password.min_length}}, expected >=14"
@@ -8,7 +10,8 @@
 
 - id: CC-PW-002
   title: "Password: Complexity Enabled"
-  category: "Security"
+  category: Account
+  severity: high
   when: "win.password.complexity_enabled == True"
   pass: "Complexity enabled per policy"
   fail: "Complexity disabled"
@@ -16,16 +19,17 @@
 
 - id: CC-PW-003
   title: "Password: Lockout Threshold"
-  category: "Security"
+  category: Account
+  severity: high
   when: "win.password.lockout_threshold > 0 and win.password.lockout_threshold <= 5"
   pass: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   fail: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   remediation: "Set 'Account lockout threshold' to 1–5 invalid attempts in Local Security Policy → Account Lockout Policy."
 
-# --- FIREWALL RULES WITH PASS/FAIL/REMEDIATION ---
-
+# FIREWALL (System)
 - id: AU-010
   title: "Firewall default inbound = Block (all profiles)"
+  category: System
   severity: high
   when: "win.firewall.Domain.default_inbound == 'Block' and win.firewall.Private.default_inbound == 'Block' and win.firewall.Public.default_inbound == 'Block'"
   pass: "Default inbound action is Block on Domain, Private, and Public."
@@ -37,6 +41,7 @@
 
 - id: AU-011
   title: "Firewall enabled (Domain/Private/Public)"
+  category: System
   severity: high
   when: "win.firewall.Domain.enabled == true and win.firewall.Private.enabled == true and win.firewall.Public.enabled == true"
   pass: "Windows Defender Firewall is enabled on all profiles."
@@ -48,6 +53,7 @@
 
 - id: AU-012
   title: "No inbound RDP/SMB/WinRM allowed on Public profile"
+  category: System
   severity: high
   when: "win.firewall.Public.inbound_allow_rdp == false and win.firewall.Public.inbound_allow_smb == false and win.firewall.Public.inbound_allow_winrm == false"
   pass: "RDP/SMB/WinRM are not exposed to the internet on the Public profile."
@@ -61,6 +67,7 @@
 
 - id: AU-013
   title: "Inbound block rules present (hygiene)"
+  category: System
   severity: medium
   when: "win.firewall.inbound_block_enabled_count > 0"
   pass: "At least one inbound block rule is present."
@@ -70,9 +77,10 @@
     or review inbound allow set for least privilege. Example:
     `New-NetFirewallRule -DisplayName 'Block Legacy SMB' -Direction Inbound -Action Block -Protocol TCP -LocalPort 139,445 -Profile Domain,Private,Public`.
 
-# FMT_SMR.1 — Admins membership minimal
+# ADMIN GROUP BASELINE (Account)
 - id: AU-026
   title: "Administrators group members approved"
+  category: Account
   severity: high
   when: "win.admins.checked == true and win.admins.unauthorized_count == 0"
   pass: "Only approved identities in Administrators."
@@ -81,9 +89,10 @@
     Review and remove unapproved members:
     Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
 
-# FAU_SAR.1 — Audit log retention / size
+# SECURITY LOG RETENTION/SIZE (Security)
 - id: AU-021
   title: "Security log retained or sized appropriately"
+  category: Security
   severity: medium
   when: "win.evtx.security.retention_enabled == true or win.evtx.security.max_size_mb >= 128"
   pass: "Security log retained or ≥128MB."
@@ -92,9 +101,10 @@
     Enable retention: wevtutil sl Security /rt:true
     or increase size: wevtutil sl Security /ms:134217728
 
-# FPT_STM.1 — Time service healthy
+# TIME SERVICE (System)
 - id: AU-023
   title: "Time service is healthy and recently synced"
+  category: System
   severity: medium
   when: "win.time.service_running == true and win.time.start_type == 'Automatic' and win.time.source != 'Local CMOS Clock' and win.time.hours_since_last_sync <= 24"
   pass: "W32Time running, Automatic, valid source, synced ≤24h."
@@ -104,9 +114,10 @@
     w32tm /config /syncfromflags:manual /manualpeerlist:'time.windows.com,0x8'
     w32tm /resync
 
-# FAU_STG.1 — Protect audit log files (Security.evtx ACLs)
+# AUDIT LOG FILE PROTECTION (Security)
 - id: AU-022
   title: "Security.evtx write access restricted"
+  category: Security
   severity: high
   when: "win.evtx.security.acl_checked == true and win.evtx.security.write_offender_count == 0"
   pass: "Only SYSTEM/Administrators/EventLog have write access."
@@ -115,9 +126,10 @@
     icacls %SystemRoot%\System32\winevt\Logs\Security.evtx /inheritance:r
     icacls ... /grant:r "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" "NT SERVICE\EventLog:(M)"
 
-# FIA_SOS.1 — Password complexity & max length/age
+# PASSWORD: COMPLEXITY/LENGTH/AGE (Account)
 - id: AU-028
   title: "Password complexity and length/age"
+  category: Account
   severity: medium
   when: "win.pw.complexity_required == true and win.pw.min_length >= 8 and win.pw.max_age_days <= 365"
   pass: "Complexity on, min length ≥8, max age ≤365 days."
@@ -127,9 +139,10 @@
     Password must meet complexity requirements = Enabled;
     Minimum password length ≥ 8; Maximum password age ≤ 365.
 
-# FAU_GEN.2 — Log content has key fields (health)
+# SECURITY EVENTS HAVE KEY FIELDS (Security)
 - id: AU-027
   title: "Security events carry key fields"
+  category: Security
   severity: low
   when: "win.evtx.security.sample_has_key_fields == true"
   pass: "Recent events include ID, time, and target user."
@@ -137,9 +150,10 @@
   remediation: >
     Verify audit policy and Windows Event Log service; ensure no filtering drops key fields.
 
-# FIA_UAU.1 — Built-in Administrator disabled
+# BUILT-IN ACCOUNTS (Account)
 - id: AU-024
   title: "Built-in Administrator (RID 500) disabled"
+  category: Account
   severity: high
   when: "win.local.admin500_enabled == false"
   pass: "Built-in Administrator account is disabled."
@@ -147,9 +161,9 @@
   remediation: >
     Disable-LocalUser -Name 'Administrator' (or via GPO).
 
-# FIA_SOS.2 — Password history & minimum age
 - id: AU-029
   title: "Password history and minimum age"
+  category: Account
   severity: low
   when: "win.pw.history_size >= 5 and win.pw.min_age_days >= 1"
   pass: "History ≥ 5 and min age ≥ 1 day."
@@ -157,9 +171,9 @@
   remediation: >
     Enforce password history (≥5) and minimum age (≥1 day) via Local Security Policy or GPO.
 
-# FIA_UAU.2 — Guest disabled
 - id: AU-025
   title: "Guest (RID 501) disabled"
+  category: Account
   severity: high
   when: "win.local.guest501_enabled == false"
   pass: "Guest account is disabled."
@@ -167,9 +181,9 @@
   remediation: >
     Disable-LocalUser -Name 'Guest' (or via GPO).
 
-# FIA_AFL.2 — Lockout duration & reset window
 - id: AU-030
   title: "Account lockout duration/reset window"
+  category: Account
   severity: medium
   when: "win.lockout.duration_minutes >= 15 and win.lockout.reset_minutes <= 15"
   pass: "Lockout duration ≥15m and reset window ≤15m."

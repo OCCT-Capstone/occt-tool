@@ -1,4 +1,3 @@
-# backend/live_rules.py
 import re, json, os
 
 # Try YAML if available; otherwise allow JSON rules files
@@ -13,15 +12,23 @@ SAFE_GLOBALS = {"__builtins__": {}}
 _token_re = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
 
 def _normalize_rules(raw):
+    """
+    Normalizes rules to a common shape used downstream.
+    Back-compat:
+      - condition: prefers 'when', falls back to 'expr'
+      - text: prefers 'pass'/'fail', falls back to 'pass_text'/'fail_text'
+      - category defaults 'Security'; severity defaults 'medium'
+    """
     rules = []
     for r in (raw or []):
         rules.append({
-            "id":         (r.get("id") or r.get("control") or r.get("title")),
-            "title":      (r.get("title") or r.get("control") or ""),
-            "category":   (r.get("category") or "Security"),
-            "expr":       (r.get("when") or ""),
-            "pass":       (r.get("pass") or "Passed"),
-            "fail":       (r.get("fail") or "Failed"),
+            "id":          (r.get("id") or r.get("control") or r.get("title")),
+            "title":       (r.get("title") or r.get("control") or ""),
+            "category":    (r.get("category") or "Security"),
+            "severity":    (r.get("severity") or "medium"),
+            "expr":        (r.get("when") or r.get("expr") or ""),
+            "pass_text":   (r.get("pass") or r.get("pass_text") or "Passed"),
+            "fail_text":   (r.get("fail") or r.get("fail_text") or "Failed"),
             "remediation": (r.get("remediation") or ""),
         })
     return rules
@@ -91,17 +98,19 @@ def evaluate_facts_document(facts_doc: dict, rules_path: str):
     for r in rules:
         ok = _eval_expr(r["expr"], facts)
         outcome = "Passed" if ok else "Failed"
-
-        # ✅ Description is "observed" / pass/fail text ONLY
-        desc = _render(r["pass"] if ok else r["fail"], facts)
+        desc = _render(r["pass_text"] if ok else r["fail_text"], facts)
 
         out.append({
             "time": collected_at,
-            "category": r["category"],
+            "category": r["category"],     # used by UI
             "control": r["title"],
             "outcome": outcome,
             "account": hostname or "LocalPolicy",
             "description": desc,
             "host": hostname,
+            # severity is normalized and available if/when you add a column/UI usage
+            "severity": r["severity"],
+            "rule_id": r["id"],
+            "remediation": r["remediation"],
         })
     return out
