@@ -190,3 +190,36 @@
   fail: "Lockout duration too short or reset window too long."
   remediation: >
     Set via Local Security Policy or GPO: Account lockout duration ≥15; Reset account lockout counter after ≤15.
+
+# --- AUDIT POLICY (exactly three controls) ---
+
+- id: AU-031
+  title: "Audit policy: Logon events (Success & Failure)"
+  category: Security
+  severity: high
+  when: "win.audit.Logon == 'Success,Failure'"
+  pass: "Logon auditing is set to Success & Failure."
+  fail: "Logon auditing is not set to Success & Failure."
+  remediation: >
+    auditpol /set /subcategory:"Logon" /success:enable /failure:enable
+
+- id: AU-032
+  title: "Audit policy: Account management (Success & Failure)"
+  category: Security
+  severity: high
+  # Both subcategories must be Success,Failure
+  when: "win.audit.UserAccountManagement == 'Success,Failure' and win.audit.SecurityGroupManagement == 'Success,Failure'"
+  pass: "User/Group account management auditing is set to Success & Failure."
+  fail: "One or both account management subcategories are not Success & Failure."
+  remediation: >
+    auditpol /set /subcategory:"User Account Management","Security Group Management" /success:enable /failure:enable
+
+- id: AU-033
+  title: "Audit policy: Policy change (Success & Failure)"
+  category: Security
+  severity: high
+  when: "win.audit.AuditPolicyChange == 'Success,Failure'"
+  pass: "Audit Policy Change is set to Success & Failure."
+  fail: "Audit Policy Change is not set to Success & Failure."
+  remediation: >
+    auditpol /set /subcategory:"Audit Policy Change" /success:enable /failure:enable

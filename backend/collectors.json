@@ -20,6 +20,14 @@
       "interval_seconds": 900,
       "enabled": true,
       "replace_previous": true
+    },
+    {
+      "name": "win_auditpolicy",
+      "script": "collector/wrap_auditpolicy_to_facts.ps1",
+      "interval_seconds": 900,
+      "enabled": true,
+      "replace_previous": true
     }
+
   ]
 }
