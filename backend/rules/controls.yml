@@ -223,3 +223,50 @@
   fail: "Audit Policy Change is not set to Success & Failure."
   remediation: >
     auditpol /set /subcategory:"Audit Policy Change" /success:enable /failure:enable
+
+# --- AUDIT POLICY ADD-ON ---
+
+- id: AU-034
+  title: "Audit policy: Account Lockout (Success)"
+  category: Security
+  severity: high
+  when: "win.audit.AccountLockout == 'Success' or win.audit.AccountLockout == 'Success,Failure'"
+  pass: "Account Lockout auditing includes Success."
+  fail: "Account Lockout auditing not set to Success."
+  remediation: >
+    auditpol /set /subcategory:"Account Lockout" /success:enable
+
+- id: AU-035
+  title: "Advanced audit policy in use"
+  category: Security
+  severity: medium
+  when: "win.audit.AdvancedAuditingEnabled == true"
+  pass: "Advanced auditing appears enabled (subcategory settings present)."
+  fail: "Advanced auditing not detected."
+  remediation: >
+    Enable Advanced Audit Policy via GPO and set required subcategories.
+
+# --- SYSTEM TIME ADD-ON ---
+
+- id: AU-036
+  title: "Time service: NTP peers configured"
+  category: System
+  severity: medium
+  when: "win.time.ntp_configured == true and win.time.source != 'Local CMOS Clock'"
+  pass: "NTP peers configured and source is not Local CMOS Clock."
+  fail: "NTP peers not configured or source is Local CMOS Clock."
+  remediation: >
+    w32tm /config /syncfromflags:manual /manualpeerlist:'time.windows.com,0x8'
+    w32tm /config /update & w32tm /resync
+
+# --- ADMINS STRICT VARIANT ---
+
+- id: AU-026S
+  title: "Administrators group: strict baseline"
+  category: Account
+  severity: high
+  when: "win.admins.unauthorized_count_strict == 0"
+  pass: "Only core identities in Administrators."
+  fail: "Unexpected members in Administrators (strict policy)."
+  remediation: >
+    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
