@@ -35,3 +35,20 @@
   padding:.4rem .6rem 0; color:var(--muted); font-size:.9rem;
 }
 .axis-x span{ text-align:center; }
+
+/* Percentage labels overlay */
+.barcol { position: relative; }  /* make column a positioning context */
+
+.bar-label {
+  position: absolute;
+  left: 0; right: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: .9rem;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45); /* legibility on color */
+  color: #f8fafc; /* near-white for dark theme */
+}
+
+.bar-label.top { top: 4px; }          /* sits over the green area */
+.bar-label.bottom { bottom: 4px; }    /* sits above the base/red area */

@@ -13,17 +13,19 @@
 /* --- Toolbar (filters & actions) --- */
 .toolbar{
   display: grid;
-  grid-template-columns: 2fr repeat(2, 1fr) 2fr 1fr auto; /* search | dates | category | outcome | tools */
-  gap: 1rem;
+  grid-template-columns: 2fr 1.4fr 1fr auto; /* search | category | outcome | tools */
+  gap: .8rem;
   align-items: end;
   margin-bottom: 1rem;
+  text-align: center;
 }
+
 @media (max-width: 1000px){
-  .toolbar{ grid-template-columns: 1fr 1fr; }
+  .toolbar{ grid-template-columns: 1fr 1fr; text-align: center;}
 }
 
 .field{ display: flex; flex-direction: column; gap: .4rem; }
-.field label{ color: var(--muted); font-size: .9rem; }
+.field label{ color: var(--muted); font-size: .9rem; text-align: center; }
 
 .input{
   background: #fff;
@@ -39,7 +41,12 @@
 }
 
 /* --- Category chips --- */
-.chips{ display: flex; gap: .4rem; flex-wrap: wrap; }
+.chips{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .5rem;
+  text-align: center;
+}
 .chip{
   background: #eef2ff;
   border: 1px solid #e5e7eb;
@@ -48,6 +55,7 @@
   font-weight: 600;
   color: #1f2937;
   cursor: pointer;
+  text-align: center;
 }
 .chip.active{ background: #dbeafe; border-color:#bfdbfe; }
 

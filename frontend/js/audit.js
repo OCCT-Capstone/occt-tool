@@ -1,20 +1,19 @@
 // Audit Trail page logic: loads data from API (sample/live via window.occt.api),
-// supports search, filter, sort, pagination, and CSV export.
+// supports search, category chips, outcome filter, sort, pagination, and CSV export.
+// (Date filters removed because scans are batch-only.)
 
 // --- Elements ---
-const tbody     = document.getElementById('auditTableBody');
-const q         = document.getElementById('q');
-const dateFrom  = document.getElementById('dateFrom');
-const dateTo    = document.getElementById('dateTo');
-const outcome   = document.getElementById('outcome');
-const chips     = [...document.querySelectorAll('.chip')];
+const tbody       = document.getElementById('auditTableBody');
+const q           = document.getElementById('q');
+const outcome     = document.getElementById('outcome');
+const chips       = [...document.querySelectorAll('.chip')];
 const resultCount = document.getElementById('resultCount');
-const prevPage  = document.getElementById('prevPage');
-const nextPage  = document.getElementById('nextPage');
-const pageInfo  = document.getElementById('pageInfo');
-const exportBtn = document.getElementById('exportBtn');
-const clearBtn  = document.getElementById('clearBtn');
-const headers   = [...document.querySelectorAll('thead th')];
+const prevPage    = document.getElementById('prevPage');
+const nextPage    = document.getElementById('nextPage');
+const pageInfo    = document.getElementById('pageInfo');
+const exportBtn   = document.getElementById('exportBtn');
+const clearBtn    = document.getElementById('clearBtn');
+const headers     = [...document.querySelectorAll('thead th')];
 
 // --- State ---
 let DATA = [];            // populated from API
@@ -31,9 +30,8 @@ const api = (window.occt && window.occt.api)
 
 // --- Utils ---
 const escapeHTML = (s='') =>
-  s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 
-// Unified AU formatter (DD/MM/YYYY HH:MM 24h, Australia/Sydney)
 const fmtTime = (iso) => {
   if (!iso) return '';
   if (window.occt && typeof window.occt.formatDateTimeAU === 'function') {
@@ -62,14 +60,16 @@ async function loadData() {
     const res = await fetch(api('/audit'));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    // Expect an array of records; normalize keys defensively
+    // Expect an array of records; normalize keys defensively.
+    // Add `code` so search can match project codes (e.g., FIA_AFL.1).
     DATA = (Array.isArray(json) ? json : []).map(r => ({
-      time: r.time || r.timestamp || null,
-      category: r.category || '',
-      control: r.control || r.check_name || '',
-      outcome: r.outcome || r.status || '',
-      account: r.account || r.host || '',
-      description: r.description || ''
+      time:        r.time || r.timestamp || null,
+      category:    r.category || '',
+      control:     r.control || r.check_name || '',
+      outcome:     r.outcome || r.status || '',
+      account:     r.account || r.host || '',
+      description: r.description || '',
+      code:        r.code || r.cc || r.cc_id || ''   // <-- project code support
     }));
   } catch (err) {
     console.error('Audit load failed:', err);
@@ -78,21 +78,17 @@ async function loadData() {
   }
 }
 
-// --- Filtering + sorting ---
+// --- Filtering + sorting (no date range) ---
 function filtered() {
-  const text = q.value.trim().toLowerCase();
-  const from = dateFrom.value ? new Date(dateFrom.value) : null;
-  const to   = dateTo.value   ? new Date(dateTo.value + 'T23:59:59') : null;
-  const oc   = outcome.value;
+  const text = (q?.value || '').trim().toLowerCase();
+  const oc   = outcome?.value || '';
 
   return DATA.filter(r => {
     if (activeCats.size && !activeCats.has(r.category)) return false;
     if (oc && r.outcome !== oc) return false;
-    const d = r.time ? new Date(r.time) : null;
-    if (from && d && d < from) return false;
-    if (to   && d && d > to)   return false;
+
     if (text) {
-      const hay = `${r.description} ${r.control} ${r.account} ${r.category}`.toLowerCase();
+      const hay = `${r.description} ${r.control} ${r.account} ${r.category} ${r.code}`.toLowerCase();
       if (!hay.includes(text)) return false;
     }
     return true;
@@ -109,7 +105,7 @@ function filtered() {
 
 function render() {
   const rows = filtered();
-  resultCount.textContent = rows.length;
+  if (resultCount) resultCount.textContent = rows.length;
 
   // paginate
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -128,34 +124,36 @@ function render() {
         <td>${escapeHTML(r.control)}</td>
         <td>${outcomePill(r.outcome)}</td>
         <td>${escapeHTML(r.account)}</td>
-        <td>${escapeHTML(r.description)}</td>
+        <td>
+          ${escapeHTML(r.description)}
+          ${r.code ? `<div class="code-line">${escapeHTML(r.code)}</div>` : ''}
+        </td>
       </tr>
     `).join('');
   }
 
   // pager
-  pageInfo.textContent = `${page} / ${totalPages}`;
-  prevPage.disabled = page <= 1;
-  nextPage.disabled = page >= totalPages;
+  if (pageInfo) pageInfo.textContent = `${page} / ${totalPages}`;
+  if (prevPage) prevPage.disabled = page <= 1;
+  if (nextPage) nextPage.disabled = page >= totalPages;
 }
 
 // --- Events ---
-q.addEventListener('input', () => { page = 1; render(); });
-dateFrom.addEventListener('change', () => { page = 1; render(); });
-dateTo.addEventListener('change', () => { page = 1; render(); });
-outcome.addEventListener('change', () => { page = 1; render(); });
+if (q) q.addEventListener('input', () => { page = 1; render(); });
+if (outcome) outcome.addEventListener('change', () => { page = 1; render(); });
 
 chips.forEach(ch => {
   ch.addEventListener('click', () => {
     const cat = ch.dataset.cat;
+    if (!cat) return;
     if (activeCats.has(cat)) { activeCats.delete(cat); ch.classList.remove('active'); }
     else { activeCats.add(cat); ch.classList.add('active'); }
     page = 1; render();
   });
 });
 
-prevPage.addEventListener('click', () => { if (page>1) { page--; render(); } });
-nextPage.addEventListener('click', () => { page++; render(); });
+if (prevPage) prevPage.addEventListener('click', () => { if (page>1) { page--; render(); } });
+if (nextPage) nextPage.addEventListener('click', () => { page++; render(); });
 
 headers.forEach(th => {
   th.addEventListener('click', () => {
@@ -167,23 +165,25 @@ headers.forEach(th => {
   });
 });
 
-clearBtn.addEventListener('click', () => {
-  q.value = ''; dateFrom.value = ''; dateTo.value = ''; outcome.value = '';
+if (clearBtn) clearBtn.addEventListener('click', () => {
+  if (q) q.value = '';
+  if (outcome) outcome.value = '';
   activeCats.clear(); chips.forEach(c => c.classList.remove('active'));
   page = 1; render();
 });
 
-exportBtn.addEventListener('click', () => {
+if (exportBtn) exportBtn.addEventListener('click', () => {
   const rows = filtered();
-  const header = ['Time','Category','Control','Outcome','Account/Host','Description'];
+  const header = ['Time','Category','Control','Outcome','Account/Host','Description','Code'];
   const csv = [header.join(',')].concat(
     rows.map(r => [
-      r.time ? new Date(r.time).toISOString() : '', // keep ISO in CSV for machine-readability
+      r.time ? new Date(r.time).toISOString() : '', // ISO for machine-readability
       r.category,
       (r.control || '').replaceAll('"','""'),
       r.outcome,
       (r.account || '').replaceAll('"','""'),
-      (r.description || '').replaceAll('"','""')
+      (r.description || '').replaceAll('"','""'),
+      (r.code || '').replaceAll('"','""')
     ].map(x => `"${x}"`).join(','))
   ).join('\n');
 

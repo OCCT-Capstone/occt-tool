@@ -68,33 +68,57 @@
     if (donutValueEl) donutValueEl.setAttribute('stroke-dasharray', `${toNum(compliancePct, 0)}, 100`);
     if (pctTextEl)     pctTextEl.textContent = `${toNum(compliancePct, 0)}%`;  // replace, don't append
 
-    // ===== Bars (stacked columns) =====
-    const monthly = Array.isArray(dash?.monthly) ? dash.monthly : [];
-    const barChart = document.getElementById('barChart');
-    const axisX    = document.getElementById('axisX');
-    if (barChart) barChart.innerHTML = '';
-    if (axisX) axisX.innerHTML = '';
+  // ===== Bars (stacked columns) with % label (green only) =====
+  const monthly = Array.isArray(dash?.monthly) ? dash.monthly : [];
+  const barChart = document.getElementById('barChart');
+  const axisX    = document.getElementById('axisX');
+  if (barChart) barChart.innerHTML = '';
+  if (axisX) axisX.innerHTML = '';
 
-    monthly.forEach(pt => {
-      const col = document.createElement('div');
-      col.className = 'barcol';
+  monthly.forEach((pt) => {
+    const rawC = Number(pt.compliant) || 0;
+    const rawN = Number(pt.noncompliant) || 0;
+    const total = rawC + rawN;
 
-      const green = document.createElement('div');
-      green.className = 'bar green';
-      green.style.height = (Number(pt.compliant) || 0) + '%';
+    // Support either counts or percentages by normalizing
+    const cPct = total > 0 ? (rawC / total) * 100 : 0;
+    const nPct = total > 0 ? (rawN / total) * 100 : 0;
 
-      const red = document.createElement('div');
-      red.className = 'bar red';
-      red.style.height = (Number(pt.noncompliant) || 0) + '%';
+    const col = document.createElement('div');
+    col.className = 'barcol';
+    col.setAttribute('role', 'img');
+    // Keep full info in accessibility/tooltip, even if we hide red visually
+    col.setAttribute('aria-label', `${pt.month || 'Month'}: ${cPct.toFixed(0)}% compliant, ${nPct.toFixed(0)}% non-compliant`);
+    col.title = `${pt.month || ''}: ${cPct.toFixed(0)}% compliant • ${nPct.toFixed(0)}% non-compliant`;
 
-      col.appendChild(green);
-      col.appendChild(red);
-      if (barChart) barChart.appendChild(col);
+    // Segments: red on top, green on bottom
+    const red = document.createElement('div');
+    red.className = 'bar red';
+    red.style.height = nPct + '%';
 
-      const tick = document.createElement('span');
-      tick.textContent = pt.month || '';
-      if (axisX) axisX.appendChild(tick);
-    });
+    const green = document.createElement('div');
+    green.className = 'bar green';
+    green.style.height = cPct + '%';
+
+    // Visible label: ONLY compliant (green) %
+    const lblGreen = document.createElement('div');
+    lblGreen.className = 'bar-label bottom';
+    lblGreen.textContent = `${cPct.toFixed(0)}%`;
+
+    // Append order defines stacking (top -> bottom)
+    col.appendChild(red);
+    col.appendChild(green);
+    col.appendChild(lblGreen);
+
+    barChart.appendChild(col);
+
+    const tick = document.createElement('span');
+    tick.textContent = pt.month || '';
+    axisX.appendChild(tick);
+  });
+
+
+
 
     // ===== KPIs (use textContent so we don't keep the old '—' placeholder) =====
     const setTxt = (id, val) => {
