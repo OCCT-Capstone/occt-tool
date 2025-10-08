@@ -102,3 +102,27 @@
   .settings-card .input,
   .settings-card .select{ max-width: 100%; }
 }
+
+/* Disabled button look + block symbol on hover */
+.btn.is-disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  filter: grayscale(20%);
+  position: relative; /* needed for the hover pseudo-element */
+}
+
+/* Show a block symbol when hovering a disabled button */
+.btn.is-disabled:hover::after,
+.btn:disabled:hover::after {
+  position: relative;
+  top: 0;
+  right: 0;
+  font-size: 0.95em;
+}
+.hint {
+  font-size: 0.9rem;
+  color: var(--muted, #6b7280);
+  margin-top: 0.25rem;
+  display: block;
+}

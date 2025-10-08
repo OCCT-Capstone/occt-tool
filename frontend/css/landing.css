@@ -1,0 +1,67 @@
+/* Landing page */
+.landing .hero{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;margin:1rem 0 1.2rem}
+.landing .logo{width:52px;height:52px;border-radius:12px}
+.container.landing{max-width:1320px;margin:0 auto;padding:1.2rem}
+.landing .cards{display:grid;gap:1.2rem;grid-template-columns:2fr 1fr}
+@media (max-width:1200px){.landing .cards{grid-template-columns:1fr}}
+
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.2rem 1.4rem;min-height:240px}
+.last-scan .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin:.6rem 0 1rem}
+.last-scan .k{display:block;color:var(--muted);font-size:.9rem}
+.last-scan .v{font-weight:700}
+.last-scan .actions{
+  display:flex;
+  gap:.6rem;
+  flex-wrap:wrap;
+  margin-top:.6rem;
+  justify-content:center;
+}
+.small{font-size:.9rem;color:var(--muted)}
+
+.settings .row{display:flex;align-items:center;justify-content:space-between;margin:.4rem 0}
+.settings .label{margin-left:.5rem}
+
+/* iOS-style switch — reuse Settings look */
+.card .switch{position:relative;display:inline-block;width:46px;height:26px}
+.card .switch input{display:none}
+.card .switch .slider{position:absolute;inset:0;background:#e5e7eb;border-radius:999px;transition:.2s;cursor:pointer}
+.card .switch .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.card .switch input:checked + .slider{background:#2563eb}
+.card .switch input:checked + .slider:before{transform:translateX(20px)}
+
+/* Settings card tidy */
+.settings { display: flex; flex-direction: column; gap: .8rem; }
+.settings .pref {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .4rem 0;
+}
+.pref-title { font-size: .95rem; }
+
+/* iOS-style switch (keep your existing visual spec) */
+.switch{position:relative;display:inline-block;width:46px;height:26px}
+.switch input{display:none}
+.switch .slider{position:absolute;inset:0;background:#e5e7eb;border-radius:999px;transition:.2s;cursor:pointer}
+.switch .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.switch input:checked + .slider{background:#2563eb}
+.switch input:checked + .slider:before{transform:translateX(20px)}
+
+/* Full-width Logout button */
+.btn.wide { width: 100%; text-align: center; }
+
+/* (Optional) Slightly larger Last scan stats spacing */
+.last-scan .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:.8rem 0 1.2rem}
+
+.pref-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: .8rem; }
+
+.btn.is-disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  filter: grayscale(20%);
+  position: relative;
+}
+.btn.is-disabled:hover::after,
+.btn:disabled:hover::after {
+  position: relative;
+  font-size: 0.95em;
+}

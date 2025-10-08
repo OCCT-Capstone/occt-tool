@@ -79,7 +79,23 @@ def auth_logout():
     session.clear()
     return jsonify(ok=True)
 
+@app.get("/logout")
+def do_logout_alias():
+    # clear session and go back to login
+    session.clear()
+    return redirect(url_for("login_page"))
+
+@app.get("/auth/logout")
+def do_logout_canonical():
+    session.clear()
+    return redirect(url_for("login_page"))
+
 # Protected pages
+@app.get("/landing")
+@login_required
+def landing_page():
+    return render_template("landing.html")
+
 @app.get("/")
 @login_required
 def index():

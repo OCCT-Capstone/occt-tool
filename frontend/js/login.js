@@ -44,44 +44,37 @@
     const username = (document.getElementById('username')?.value || '').trim();
     const password = (document.getElementById('password')?.value || '');
 
+    if (!username || !password) {
+      setLoading(false);
+      return showError('Please enter username and password');
+    }
+
     try {
       // 1) Auth
       const res = await fetch('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-OCCT-No-Loader': '1' }, // no global overlay on login
+        headers: { 'Content-Type': 'application/json', 'X-OCCT-No-Loader': '1' },
         body: JSON.stringify({ username, password })
       });
 
       if (res.status === 401) {
-        await minHold;
-        setLoading(false);
+        await minHold; setLoading(false);
         return showError('Invalid username or password');
       }
       if (!res.ok) {
-        await minHold;
-        setLoading(false);
+        await minHold; setLoading(false);
         return showError(`Login failed (HTTP ${res.status})`);
       }
 
-      // 2) Optional: kick live rescan (kept from your current flow)
+      // 2) No scan on login. Default LIVE once, then go to Landing.
       try {
-        if (window.occt && window.occt.loading && window.occt.loading.show) {
-          window.occt.loading.show(); // only shows if loader.js is present (safe guard)
-        }
-        await fetch('/api/live/rescan?wait=1', { method: 'POST' });
-      } catch (_) {
-        // ignore — still proceed to dashboard
-      } finally {
-        if (window.occt && window.occt.loading && window.occt.loading.hide) {
-          window.occt.loading.hide();
-        }
-      }
-
+        const K = (window.occt?.K || { MODE: 'occt.apiMode' });
+        localStorage.setItem(K.MODE, 'live');
+      } catch (_) {}
       await minHold;
-      window.location.replace('/'); // dashboard shells quickly; widgets hydrate there
+      window.location.replace('/landing');
     } catch (ex) {
-      await minHold;
-      setLoading(false);
+      await minHold; setLoading(false);
       showError('Network error. Please try again.');
     }
   });

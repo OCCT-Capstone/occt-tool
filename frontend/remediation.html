@@ -51,12 +51,17 @@
   <!-- Top bar -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
-    <ul class="navlinks">
+    <ul class="navlinks center">
       <li><a href="/">Dashboard</a></li>
       <li><a href="/audit">Audit</a></li>
       <li class="active"><a href="/remediation">Remediation</a></li>
       <li><a href="/settings">Settings</a></li>
     </ul>
+    <div class="nav-right">
+      <small id="lastScanHeaderHint" class="nav-hint muted">
+        <span class="text">Last scan: —</span>
+      </small>
+    </div>
   </nav>
 
   <main class="container">
@@ -84,5 +89,6 @@
 
   <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/remediation.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/lastscan-header.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OCCT – Welcome</title>
+
+  <!-- load helpers before CSS to avoid theme flash -->
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+
+<body class="dash-body">
+  <!-- NO header on landing -->
+
+  <main class="container landing">
+    <section class="hero">
+      <img class="logo" src="{{ url_for('static', filename='assets/occt-logo-dark.png') }}" alt="OCCT logo" />
+      <div>
+        <h1>OS Compliance Check Tool</h1>
+        <p class="muted">Assess Windows hosts against Common Criteria. View your most recent scan or kick off a new one.</p>
+      </div>
+    </section>
+
+    <section class="cards">
+      <!-- Last scan card -->
+      <div class="card">
+        <h3>Last scan</h3>
+        <div id="lastScanBlock" class="last-scan">
+          <p id="lastScanEmpty" class="muted">No scan found yet.</p>
+          <div id="lastScanData" class="stats" hidden>
+            <div><span class="k">Completed</span><span id="lastScanTime" class="v">—</span></div>
+            <div><span class="k">Hosts</span><span id="lastScanHosts" class="v">—</span></div>
+            <div><span class="k">Events</span><span id="lastScanEvents" class="v">—</span></div>
+            <div><span class="k">Failed</span><span id="lastScanFailed" class="v">—</span></div>
+          </div>
+          <div class="actions">
+            <button id="viewLastBtn" class="btn">View last scan</button>
+            <button id="newScanBtn" class="btn btn-primary">Start new scan</button>
+          </div>
+          <br>
+          <p id="scanStatus" class="muted small" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <!-- Mini settings card -->
+      <div class="card">
+        <h3>Settings</h3>
+        <div class="settings">
+            <div class="pref">
+                <span class="pref-title">Dark mode</span>
+                <label class="switch">
+                <input id="themeToggle" type="checkbox" />
+                <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="pref">
+                <span class="pref-title">Use sample data</span>
+                <label class="switch">
+                <input id="sampleToggle" type="checkbox" />
+                <span class="slider"></span>
+                </label>
+            </div>
+
+            <button id="logoutBtn" class="btn secondary wide">Logout</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/landing.js') }}"></script>
+</body>
+</html>

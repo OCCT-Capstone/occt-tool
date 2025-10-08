@@ -16,12 +16,17 @@
 <body class="dash-body">
   <nav class="topbar">
     <div class="brand">OCCT</div>
-    <ul class="navlinks">
+    <ul class="navlinks center">
       <li><a href="/">Dashboard</a></li>
       <li><a href="/audit">Audit</a></li>
       <li><a href="/remediation">Remediation</a></li>
       <li class="active"><a href="/settings">Settings</a></li>
     </ul>
+    <div class="nav-right">
+      <small id="lastScanHeaderHint" class="nav-hint muted">
+        <span class="text">Last scan: —</span>
+      </small>
+    </div>
   </nav>
 
   <main class="container">
@@ -57,6 +62,7 @@
       <div class="field row">
         <label class="label" for="rescanBtn">Rescan</label>
         <button type="button" id="rescanBtn" class="btn">Rescan</button>
+        <small id="rescanHint" class="hint" hidden></small>
         <div id="rescanStatus" class="help" aria-live="polite"></div>
       </div>
 
@@ -90,5 +96,6 @@
 
   <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/lastscan-header.js') }}"></script>
 </body>
 </html>

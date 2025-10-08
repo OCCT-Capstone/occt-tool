@@ -127,20 +127,65 @@ main {
 /* =======================================
    Top bar
    ======================================= */
-.topbar {
+.topbar{
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
   padding: 0.9rem 1.2rem;
   background: linear-gradient(180deg, #0b1220, #0f172a);
   color: #fff;
   box-shadow: var(--shadow);
 }
-.topbar .brand { position: absolute; left: 1.2rem; font-weight: 800; letter-spacing: .5px; }
-.topbar .navlinks { list-style:none; display:flex; gap:1.5rem; margin:0; padding:0; justify-content:center; }
-.topbar .navlinks a { color:#cbd5e1; text-decoration:none; font-weight:500; }
-.topbar .navlinks .active a { color:#fff; }
+
+/* Brand: left */
+.topbar .brand{
+  font-weight: 800;
+  letter-spacing: .5px;
+  flex: 0 0 auto;
+}
+
+/* Links: absolutely centered, independent of left/right items */
+.topbar .navlinks.center{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.topbar .navlinks.center a{ color:#cbd5e1; text-decoration:none; font-weight:500; }
+.topbar .navlinks.center .active a{ color:#fff; }
+
+/* Hint: right */
+.nav-right{
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.nav-hint{
+  font-size: .9rem;
+  color: var(--muted, #9aa3af);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+/* Responsive: on small screens, stop absolute centering so it wraps cleanly */
+@media (max-width: 700px){
+  .topbar{ flex-wrap: wrap; }
+  .topbar .navlinks.center{
+    position: static;
+    transform: none;
+    margin: 0.4rem auto 0;
+    order: 2;                 /* brand first, links second, hint last */
+  }
+  .nav-right{ order: 3; width: 100%; justify-content: flex-end; }
+  #lastScanHeaderHint{ font-size: .85rem; }
+}
 
 /* Container + grids */
 .container{ max-width: 1100px; margin: 1.2rem auto; padding: 0 1rem; }
@@ -224,7 +269,7 @@ a.btn:focus-visible {
 .legend{ display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; color:var(--muted); }
 .key{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.2rem; vertical-align:middle; }
 .key-green{ background:var(--green); }
-.key-red{ background:var(--red); }
+.key-red{   background:var(--red); }
 :root.theme-dark .key-green{ background: color-mix(in srgb, var(--green) 75%, #0f172a 25%); }
 :root.theme-dark .key-red{   background: color-mix(in srgb, var(--red)   75%, #0f172a 25%); }
 
@@ -325,5 +370,8 @@ select:-webkit-autofill {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Make selects inherit text color (some browsers force black) */
-select { color: inherit; }
+/* (Legacy helper — safe to keep) */
+.topnav, header { display:flex; align-items:center; gap:1rem; }
+
+/* Hide hint on very small screens */
+@media (max-width: 640px){ #lastScanHeaderHint { display:none; } }

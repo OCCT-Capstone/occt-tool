@@ -375,3 +375,77 @@ def live_report():
         resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
     resp.headers["Content-Type"] = "text/html; charset=utf-8"
     return resp
+
+# --------- LAST SCAN endpoints (sample & live) ---------
+@sample_bp.get("/last-scan")
+def sample_last_scan():
+    # Latest timestamp (for display only)
+    t = db.session.query(func.max(AuditEvent.time))\
+        .filter(AuditEvent.source == "sample").scalar()
+
+    if not t:
+        return _resp_json({
+            "has_data": False,
+            "completed_at": None,
+            "event_count": 0,
+            "failed_count": 0,
+            "host_count": 0
+        }, source_header="db-sample")
+
+    # For SAMPLE, show totals across the whole sample dataset (not a time window)
+    total_events = db.session.query(func.count(AuditEvent.id))\
+        .filter(AuditEvent.source == "sample").scalar() or 0
+
+    failed_events = db.session.query(func.count(AuditEvent.id))\
+        .filter(
+            AuditEvent.source == "sample",
+            func.lower(AuditEvent.outcome) == "failed"
+        ).scalar() or 0
+
+    # Infer hosts when 'host' is empty: use 'account' values that look like machine names.
+    # Ignore known non-host accounts.
+    rows = db.session.query(AuditEvent.host, AuditEvent.account)\
+        .filter(AuditEvent.source == "sample").all()
+
+    NON_HOST_ACCOUNTS = {"domain", "ad-policy", "ad policy", "adpolicy", "adminGroup".lower(), "all users"}
+    host_set = set()
+    for h, a in rows:
+        h = (h or "").strip()
+        a = (a or "").strip()
+        if h:
+            host_set.add(h)
+            continue
+        # Heuristic: treat account as host if it's not a known non-host label and has no spaces
+        # (e.g., SRV-WS001, SRV-DB01, SRV-FS01)
+        if a and " " not in a and a.lower() not in NON_HOST_ACCOUNTS:
+            host_set.add(a)
+
+    return _resp_json({
+        "has_data": True,
+        "completed_at": t.isoformat() + "Z",
+        "event_count": int(total_events),
+        "failed_count": int(failed_events),
+        "host_count": int(len(host_set))
+    }, source_header="db-sample")
+
+
+
+@live_bp.get("/last-scan")
+def live_last_scan():
+    t = db.session.query(func.max(AuditEvent.time)).filter(AuditEvent.source == "live").scalar()
+    if not t:
+        return _resp_json({"has_data": False, "completed_at": None, "event_count": 0, "failed_count": 0, "host_count": 0}, source_header="db-live")
+    start = t.replace(second=0, microsecond=0)
+    end   = start + dt.timedelta(minutes=1)
+    rows = db.session.query(AuditEvent).filter(
+        AuditEvent.source == "live",
+        AuditEvent.time >= start,
+        AuditEvent.time < end
+    ).all()
+    return _resp_json({
+        "has_data": True,
+        "completed_at": t.isoformat() + "Z",
+        "event_count": len(rows),
+        "failed_count": sum(1 for r in rows if (r.outcome or "").lower() == "failed"),
+        "host_count": len({(r.host or "").strip() for r in rows if (r.host or "").strip()}),
+    }, source_header="db-live")
