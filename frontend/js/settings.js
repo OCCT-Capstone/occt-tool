@@ -15,7 +15,7 @@
   const reportBtn   = $('#reportBtn');
   const reportDlBtn = $('#reportDlBtn');
 
-  // DEFAULTS now: Light theme + LIVE mode
+  // Defaults: Light + LIVE
   const DEFAULTS = { [K.THEME]: 'light', [K.MODE]: 'live' };
 
   const setText = (el, v) => { if (el) el.textContent = v; };
@@ -27,7 +27,38 @@
     showToast._t = setTimeout(() => (toast.hidden = true), 1400);
   }
 
-  /* ---------------- helpers: mode/api + header hint ---------------- */
+  /* ---------------- duration helpers ---------------- */
+
+  function pickDurationMs(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    const n = (v) => Number.isFinite(v) ? v : null;
+    const parseTs = (v) => v ? Date.parse(v) : NaN;
+
+    // direct numeric fields first
+    const dm = n(obj.duration_ms);
+    if (dm != null) return dm;
+    const em = n(obj.elapsed_ms);
+    if (em != null) return em;
+
+    // derive from timestamps if available
+    const a = parseTs(obj.started_at || obj.start_time || obj.started);
+    const b = parseTs(obj.completed_at || obj.end_time || obj.finished);
+    if (Number.isFinite(a) && Number.isFinite(b) && b >= a) return b - a;
+
+    return null;
+  }
+
+  function formatDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return '—';
+    if (ms < 90_000) {
+      return `${(ms / 1000).toFixed(1)}s`;
+    }
+    const m = Math.floor(ms / 60000);
+    const s = Math.round((ms % 60000) / 1000);
+    return s ? `${m}m ${s}s` : `${m}m`;
+  }
+
+  /* ---------------- API + header hint helpers ---------------- */
 
   function getModeLocal() {
     const v = apiMode?.value;
@@ -51,7 +82,7 @@
       const j = await r.json();
       setText(textEl, 'Last scan: ' + (j?.has_data ? fmt(j.completed_at) : '—'));
       hint.hidden = false;
-    } catch { /* leave current text */ }
+    } catch { /* leave whatever is there */ }
   }
 
   /* ---------------- load + theme ---------------- */
@@ -97,19 +128,22 @@
   /* ---------------- auto-rescan on switch to LIVE ---------------- */
 
   async function autoRescanLive() {
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
     try {
       if (window.occt?.loading?.show) window.occt.loading.show();
 
       const resp = await fetch('/api/live/rescan?wait=1', { method: 'POST' });
       const body = await resp.json().catch(() => ({}));
 
+      // durations: prefer server, else client stopwatch
+      const durMs = pickDurationMs(body) ?? ((performance && performance.now) ? (performance.now() - t0) : (Date.now() - t0));
+
       const numberOrDash = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : '—');
       const ing  = body?.ingested ?? body?.inserted_total;
-      const tot  = body?.total_unique ?? body?.unique ?? body?.total;
       const fail = body?.failed_unique ?? body?.failed ?? body?.failed_count;
 
       if (resp.ok) {
-        setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Total unique: ${numberOrDash(tot)}, Failed: ${numberOrDash(fail)}`);
+        setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
         showToast('LIVE rescan complete');
         await refreshHeaderLastScan();                // update header hint
       } else {
@@ -139,32 +173,27 @@
     }
   }
 
-  /* ---------------- Reset (now defaults to LIVE) ---------------- */
+  /* ---------------- Reset (LIVE default) ---------------- */
 
   function resetAll() {
     const prevMode = getModeLocal();
 
-    // Apply defaults to storage
     Object.entries(DEFAULTS).forEach(([k, v]) => {
       try { localStorage.setItem(k, v); } catch {}
     });
 
-    // Reflect defaults in the UI immediately
     if (themeDark) themeDark.checked = (DEFAULTS[K.THEME] === 'dark');
     if (apiMode)   apiMode.value     = DEFAULTS[K.MODE];
     document.documentElement.classList.toggle('theme-dark', DEFAULTS[K.THEME] === 'dark');
 
-    // Buttons + header hint
     updateRescanState();
     refreshHeaderLastScan();
 
     showToast('Defaults restored');
 
-    // If Reset just switched you into LIVE, automatically rescan for fresh data
     if (prevMode !== 'live' && DEFAULTS[K.MODE] === 'live') {
       autoRescanLive();
     } else {
-      // keep the status area tidy
       setText(rescanMsg, '');
     }
   }
@@ -186,6 +215,7 @@
 
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const numberOrDash = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : '—');
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
 
     try {
       const baseUrl = (window.occt && window.occt.api) ? window.occt.api('/rescan') : '/api/live/rescan';
@@ -205,8 +235,9 @@
       }
 
       let ing  = body?.ingested ?? body?.inserted_total ?? null;
-      let tot  = body?.total_unique ?? body?.unique ?? body?.total ?? null;
+      let tot  = body?.total_unique ?? body?.unique ?? body?.total ?? null; // not displayed anymore, but used as a signal during polling
       let fail = body?.failed_unique ?? body?.failed ?? body?.failed_count ?? null;
+      let durMs = pickDurationMs(body); // may be null
 
       const isLive = baseUrl.startsWith('/api/live');
       if ((ing == null && tot == null && fail == null) && body?.job_id && isLive) {
@@ -224,20 +255,16 @@
         ing  = job?.inserted_total ?? job?.ingested ?? ing;
         tot  = job?.total_unique   ?? job?.unique   ?? job?.total ?? tot;
         fail = job?.failed_unique  ?? job?.failed   ?? job?.failed_count ?? fail;
-
-        const statusText = job?.status === 'done' ? 'OK' : (job?.status || 'complete');
-        setText(rescanMsg, `Rescan ${statusText}. Ingested: ${numberOrDash(ing)}, ` +
-                           `Total unique: ${numberOrDash(tot)}, Failed: ${numberOrDash(fail)}`);
-        showToast(job?.status === 'done' ? 'Rescan complete' : 'Rescan finished with issues');
-
-        await refreshHeaderLastScan();                // update header hint
-        return;
+        durMs = pickDurationMs(job) ?? durMs;
       }
 
-      setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, ` +
-                         `Total unique: ${numberOrDash(tot)}, Failed: ${numberOrDash(fail)}`);
-      showToast('Rescan complete');
+      // fall back to client stopwatch if server didn't supply duration
+      if (!Number.isFinite(durMs)) {
+        durMs = (performance && performance.now) ? (performance.now() - t0) : (Date.now() - t0);
+      }
 
+      setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
+      showToast('Rescan complete');
       await refreshHeaderLastScan();
 
     } catch (e) {
@@ -245,7 +272,6 @@
       showToast('Rescan error'); setText(rescanMsg, msg);
     } finally {
       rescanBtn.textContent = orig;
-      // keep disabled if SAMPLE; otherwise re-enable
       updateRescanState();
     }
   }
