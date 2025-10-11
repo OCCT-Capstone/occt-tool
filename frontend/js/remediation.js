@@ -1,6 +1,7 @@
 // frontend/js/remediation.js
 // Plain-text remediation view that preserves single quotes.
 // Order of precedence: event description remediation → /api/<mode>/rules → generic per-category hint.
+// Additionally: Failed items are ordered by Severity (High→Low) → Control (A→Z).
 
 (async () => {
   const api = (window.occt && window.occt.api) ? window.occt.api : (p => '/api/sample' + p);
@@ -61,7 +62,7 @@
       const res = await fetch(api('/rules'));
       if (!res.ok) return new Map();
       const list = await res.json();
-      return new Map(list.map(r => [ (r.title || r.id || '').trim(), r.remediation || '' ]));
+      return new Map(list.map(r => [ (r.title || r.id || '').trim(), { remediation: r.remediation || '', severity: (r.severity || '').toLowerCase() } ]));
     } catch {
       return new Map();
     }
@@ -71,16 +72,38 @@
     const { remediation } = splitObservedRemediation(row.description || '');
     if (remediation) return remediation;
     const key = (row.control || row.title || '').trim();
-    const fromRule = rulesMap.get(key);
+    const fromRule = rulesMap.get(key)?.remediation;
     if (fromRule) return fromRule;
     return FALLBACK_CAT_HINT[row.category] || 'Review the observed value and apply the required configuration.';
   }
 
+  const sevRank = s => ({ high:3, medium:2, low:1 }[String(s||'').toLowerCase()] || 0);
+  const rowSev = (r, rulesMap) => {
+    const key = (r.control || r.title || '').trim();
+    const raw = r.severity || rulesMap.get(key)?.severity;
+    return sevRank(raw);
+  };
+
   try {
     const [rows, rulesMap] = await Promise.all([fetchAudit(), fetchRulesMap()]);
 
-    const failed = rows.filter(r => (r.outcome || '').toLowerCase() === 'failed');
-    const passed = rows.filter(r => (r.outcome || '').toLowerCase() === 'passed');
+    const failed = rows
+      .filter(r => (r.outcome || '').toLowerCase() === 'failed')
+      // Severity (High→Low) → Control (A→Z)
+      .sort((a,b) => {
+        const sc = rowSev(b, rulesMap) - rowSev(a, rulesMap); if (sc) return sc;
+        const an = (a.control || '').toLowerCase();
+        const bn = (b.control || '').toLowerCase();
+        return an.localeCompare(bn);
+      });
+
+    const passed = rows
+      .filter(r => (r.outcome || '').toLowerCase() === 'passed')
+      .sort((a,b) => {
+        const an = (a.control || '').toLowerCase();
+        const bn = (b.control || '').toLowerCase();
+        return an.localeCompare(bn);
+      });
 
     const fixList = document.getElementById('fixList');
     const okList  = document.getElementById('okList');

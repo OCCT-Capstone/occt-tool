@@ -1,11 +1,9 @@
-// Audit Trail page logic: loads data from API (sample/live via window.occt.api),
-// supports search, category chips, outcome filter, sort, pagination, and CSV export.
-// (Date filters removed because scans are batch-only.)
+// frontend/js/audit.js
 
 // --- Elements ---
 const tbody       = document.getElementById('auditTableBody');
 const q           = document.getElementById('q');
-const outcome     = document.getElementById('outcome');
+const outcomeSel  = document.getElementById('outcome');
 const chips       = [...document.querySelectorAll('.chip')];
 const resultCount = document.getElementById('resultCount');
 const prevPage    = document.getElementById('prevPage');
@@ -16,14 +14,15 @@ const clearBtn    = document.getElementById('clearBtn');
 const headers     = [...document.querySelectorAll('thead th')];
 
 // --- State ---
-let DATA = [];            // populated from API
-let sortKey = 'time';
+let DATA = [];
+let RULES = new Map();    // title/id -> { severity }
+let sortKey = 'priority'; // default: Failed → Severity → Control
 let sortDir = 'desc';
 let page = 1;
 const pageSize = 12;
 const activeCats = new Set();
 
-// --- API helper (falls back to samples if site.js not present) ---
+// --- API helper ---
 const api = (window.occt && window.occt.api)
   ? window.occt.api
   : (p => '/api/sample' + p);
@@ -45,7 +44,6 @@ const fmtTime = (iso) => {
 
 const cmp = (a,b,k) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0);
 
-// Badge/outcome classes
 const badge = cat => {
   const cls = cat === 'System' ? 'sys' : cat === 'Security' ? 'sec' : 'acc';
   return `<span class="badge ${cls}">${escapeHTML(cat || '')}</span>`;
@@ -53,15 +51,21 @@ const badge = cat => {
 const outcomePill = o =>
   `<span class="outcome ${o === 'Passed' ? 'pass' : 'fail'}">${escapeHTML(o || '')}</span>`;
 
-// --- Fetch + normalize data from API ---
+const sevRank = s => ({ high:3, medium:2, low:1 }[String(s||'').toLowerCase()] || 0);
+const outRank = o => ({ failed:2, fail:2, passed:1, pass:1 }[String(o||'').toLowerCase()] || 0);
+const rowSev = r => sevRank(r.severity || (RULES.get((r.control || r.title || '').trim()) || {}).severity);
+
+// --- Fetch + normalize ---
 async function loadData() {
   tbody.innerHTML = `<tr><td colspan="6">Loading…</td></tr>`;
   try {
-    const res = await fetch(api('/audit'));
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-    // Expect an array of records; normalize keys defensively.
-    // Add `code` so search can match project codes (e.g., FIA_AFL.1).
+    const [resAudit, resRules] = await Promise.all([
+      fetch(api('/audit')),
+      fetch(api('/rules')).catch(() => ({ ok:false }))
+    ]);
+    if (!resAudit.ok) throw new Error('HTTP ' + resAudit.status);
+
+    const json = await resAudit.json();
     DATA = (Array.isArray(json) ? json : []).map(r => ({
       time:        r.time || r.timestamp || null,
       category:    r.category || '',
@@ -69,8 +73,20 @@ async function loadData() {
       outcome:     r.outcome || r.status || '',
       account:     r.account || r.host || '',
       description: r.description || '',
-      code:        r.code || r.cc || r.cc_id || ''   // <-- project code support
+      code:        r.code || r.cc || r.cc_id || '',
+      severity:    r.severity || ''
     }));
+
+    if (resRules && resRules.ok) {
+      const list = await resRules.json();
+      RULES = new Map(
+        Array.isArray(list)
+          ? list.map(x => [ (x.title || x.id || '').trim(), { severity: (x.severity || '').toLowerCase() } ])
+          : []
+      );
+    } else {
+      RULES = new Map();
+    }
   } catch (err) {
     console.error('Audit load failed:', err);
     DATA = [];
@@ -78,21 +94,34 @@ async function loadData() {
   }
 }
 
-// --- Filtering + sorting (no date range) ---
+// --- Filter + Sort ---
 function filtered() {
   const text = (q?.value || '').trim().toLowerCase();
-  const oc   = outcome?.value || '';
+  const oc   = outcomeSel?.value || '';
 
-  return DATA.filter(r => {
+  const rows = DATA.filter(r => {
     if (activeCats.size && !activeCats.has(r.category)) return false;
     if (oc && r.outcome !== oc) return false;
-
     if (text) {
       const hay = `${r.description} ${r.control} ${r.account} ${r.category} ${r.code}`.toLowerCase();
       if (!hay.includes(text)) return false;
     }
     return true;
-  }).sort((a,b) => {
+  });
+
+  if (sortKey === 'priority') {
+    rows.sort((a,b) => {
+      const oc = outRank(b.outcome) - outRank(a.outcome); if (oc) return oc;
+      const sc = rowSev(b) - rowSev(a);                   if (sc) return sc;
+      const an = (a.control || '').toLowerCase();
+      const bn = (b.control || '').toLowerCase();
+      return an.localeCompare(bn);
+    });
+    return rows;
+  }
+
+  // Other sorts (fallbacks)
+  return rows.sort((a,b) => {
     const dir = (sortDir === 'asc') ? 1 : -1;
     if (sortKey === 'time') {
       const at = a.time ? new Date(a.time).getTime() : 0;
@@ -110,15 +139,13 @@ function render() {
   // paginate
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   if (page > totalPages) page = totalPages;
-  const start = (page - 1) * pageSize;
-  const slice = rows.slice(start, start + pageSize);
+  const slice = rows.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
 
-  // rows
   if (!slice.length) {
     tbody.innerHTML = `<tr><td colspan="6">No results.</td></tr>`;
   } else {
     tbody.innerHTML = slice.map(r => `
-      <tr>
+      <tr data-cat="${escapeHTML(r.category || '')}">
         <td>${fmtTime(r.time)}</td>
         <td>${badge(r.category)}</td>
         <td>${escapeHTML(r.control)}</td>
@@ -132,7 +159,6 @@ function render() {
     `).join('');
   }
 
-  // pager
   if (pageInfo) pageInfo.textContent = `${page} / ${totalPages}`;
   if (prevPage) prevPage.disabled = page <= 1;
   if (nextPage) nextPage.disabled = page >= totalPages;
@@ -140,7 +166,7 @@ function render() {
 
 // --- Events ---
 if (q) q.addEventListener('input', () => { page = 1; render(); });
-if (outcome) outcome.addEventListener('change', () => { page = 1; render(); });
+if (outcomeSel) outcomeSel.addEventListener('change', () => { page = 1; render(); });
 
 chips.forEach(ch => {
   ch.addEventListener('click', () => {
@@ -159,6 +185,11 @@ headers.forEach(th => {
   th.addEventListener('click', () => {
     const key = th.dataset.sort;
     if (!key) return;
+    if (key === 'priority') {
+      sortKey = 'priority';
+      render();
+      return;
+    }
     if (sortKey === key) sortDir = (sortDir === 'asc' ? 'desc' : 'asc');
     else { sortKey = key; sortDir = key === 'time' ? 'desc' : 'asc'; }
     render();
@@ -167,7 +198,7 @@ headers.forEach(th => {
 
 if (clearBtn) clearBtn.addEventListener('click', () => {
   if (q) q.value = '';
-  if (outcome) outcome.value = '';
+  if (outcomeSel) outcomeSel.value = '';
   activeCats.clear(); chips.forEach(c => c.classList.remove('active'));
   page = 1; render();
 });
@@ -177,7 +208,7 @@ if (exportBtn) exportBtn.addEventListener('click', () => {
   const header = ['Time','Category','Control','Outcome','Account/Host','Description','Code'];
   const csv = [header.join(',')].concat(
     rows.map(r => [
-      r.time ? new Date(r.time).toISOString() : '', // ISO for machine-readability
+      r.time ? new Date(r.time).toISOString() : '',
       r.category,
       (r.control || '').replaceAll('"','""'),
       r.outcome,

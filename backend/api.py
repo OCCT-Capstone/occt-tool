@@ -2,6 +2,7 @@
 from flask import Blueprint, jsonify, request, current_app, make_response, render_template
 from sqlalchemy import func, desc
 import os, json, datetime as dt
+import threading
 
 from .models import db, AuditEvent
 from .ingest_samples import project_root, ingest_audit
@@ -10,6 +11,8 @@ from .ingest_samples import project_root, ingest_audit
 sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")  # DB-backed SAMPLE mode (auto-syncs from file)
 api_bp    = Blueprint("api",        __name__, url_prefix="/api")         # alias your UI uses (same as sample)
 live_bp   = Blueprint("live_api",   __name__, url_prefix="/api/live")    # DB-backed LIVE mode (no auto-sync)
+
+_SAMPLES_SYNC_LOCK = threading.Lock()
 
 # --------- Helpers: paths & state ---------
 def _samples_dir():
@@ -51,17 +54,27 @@ def _save_state(state: dict):
 
 # --------- SAMPLE: auto-sync samples/audit.json -> DB ---------
 def _ensure_samples_synced():
-    """If samples/audit.json changed since last time, (re)ingest into DB."""
+    """If samples/audit.json changed since last time, (re)ingest into DB.
+       Protected by a lock to avoid double ingestion on concurrent requests."""
     audit_path = _audit_sample_path()
     mtime = _file_mtime(audit_path)
     state = _load_state()
     last = state.get("audit_json_mtime", 0.0)
     if mtime <= last:
         return
-    count = ingest_audit(current_app, audit_path)
-    state["audit_json_mtime"] = mtime
-    _save_state(state)
-    current_app.logger.info(f"Samples synced -> DB: {count} rows from {audit_path}")
+
+    # --- Lock + re-check to prevent races ---
+    with _SAMPLES_SYNC_LOCK:
+        # Re-load state inside the lock
+        state = _load_state()
+        last = state.get("audit_json_mtime", 0.0)
+        if mtime <= last:
+            return
+        count = ingest_audit(current_app, audit_path)
+        state["audit_json_mtime"] = _file_mtime(audit_path)
+        _save_state(state)
+        current_app.logger.info(f"Samples synced -> DB: {count} rows from {audit_path}")
+
 
 def _force_reingest_samples():
     """Always (re)ingest samples/audit.json into DB, ignoring mtime."""
@@ -379,6 +392,7 @@ def live_report():
 # --------- LAST SCAN endpoints (sample & live) ---------
 @sample_bp.get("/last-scan")
 def sample_last_scan():
+    _ensure_samples_synced()
     # Latest timestamp (for display only)
     t = db.session.query(func.max(AuditEvent.time))\
         .filter(AuditEvent.source == "sample").scalar()

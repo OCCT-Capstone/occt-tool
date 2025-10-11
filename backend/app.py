@@ -35,6 +35,8 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
     ensure_c1_columns()
+    from .db_util import ensure_unique_index
+    ensure_unique_index()
 
 # Blueprints
 from .api import api_bp, sample_bp, live_bp   # <-- add live_bp
