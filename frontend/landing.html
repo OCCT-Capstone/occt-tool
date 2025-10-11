@@ -25,51 +25,57 @@
       </div>
     </section>
 
-    <section class="cards">
+    <!-- Stack the two cards vertically with a fixed gap -->
+    <div class="lp-stack">
+
       <!-- Last scan card -->
-      <div class="card">
+      <section class="card lp-card-fixed">
         <h3>Last scan</h3>
-        <div id="lastScanBlock" class="last-scan">
-          <p id="lastScanEmpty" class="muted">No scan found yet.</p>
-          <div id="lastScanData" class="stats" hidden>
+
+        <div id="lastScanBlock" class="lp-card-body">
+          <!-- Stats row (hidden until data present) -->
+          <div id="lastScanData" class="lp-stats" hidden>
             <div><span class="k">Completed</span><span id="lastScanTime" class="v">—</span></div>
             <div><span class="k">Hosts</span><span id="lastScanHosts" class="v">—</span></div>
             <div><span class="k">Events</span><span id="lastScanEvents" class="v">—</span></div>
             <div><span class="k">Failed</span><span id="lastScanFailed" class="v">—</span></div>
           </div>
-          <div class="actions">
-            <button id="viewLastBtn" class="btn">View last scan</button>
-            <button id="newScanBtn" class="btn btn-primary">Start new scan</button>
-          </div>
-          <br>
-          <p id="scanStatus" class="muted small" aria-live="polite"></p>
-        </div>
-      </div>
 
-      <!-- Mini settings card -->
-      <div class="card">
+          <!-- Unified hint area (both: empty + sample-mode notice) -->
+          <p id="lastScanHint" class="muted small lp-hint" aria-live="polite"></p>
+        </div>
+
+        <div class="lp-actions">
+          <button id="viewLastBtn" class="btn">View last scan</button>
+          <button id="newScanBtn" class="btn btn-primary">Start new scan</button>
+        </div>
+      </section>
+
+      <!-- Settings card -->
+      <section class="card">
         <h3>Settings</h3>
         <div class="settings">
-            <div class="pref">
-                <span class="pref-title">Dark mode</span>
-                <label class="switch">
-                <input id="themeToggle" type="checkbox" />
-                <span class="slider"></span>
-                </label>
-            </div>
+          <div class="pref">
+            <span class="pref-title">Dark mode</span>
+            <label class="switch">
+              <input id="themeToggle" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
 
-            <div class="pref">
-                <span class="pref-title">Use sample data</span>
-                <label class="switch">
-                <input id="sampleToggle" type="checkbox" />
-                <span class="slider"></span>
-                </label>
-            </div>
+          <div class="pref">
+            <span class="pref-title">Use sample data</span>
+            <label class="switch">
+              <input id="sampleToggle" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
 
-            <button id="logoutBtn" class="btn secondary wide">Logout</button>
+          <button id="logoutBtn" class="btn secondary wide">Logout</button>
         </div>
-      </div>
-    </section>
+      </section>
+
+    </div>
   </main>
 
   <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
