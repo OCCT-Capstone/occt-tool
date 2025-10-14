@@ -50,7 +50,6 @@
     }
 
     try {
-      // 1) Auth
       const res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-OCCT-No-Loader': '1' },
@@ -66,25 +65,13 @@
         return showError(`Login failed (HTTP ${res.status})`);
       }
 
-      // ✅ NEW — parse JSON so we can read redirect
       const data = await res.json();
-
-      // 2) Optional: kick live rescan (kept from your flow)
-      try {
-        if (window.occt?.loading?.show) window.occt.loading.show();
-        await fetch('/api/live/rescan?wait=1', { method: 'POST' });
-      } catch (_) {
-        // ignore — still proceed
-      } finally {
-        if (window.occt?.loading?.hide) window.occt.loading.hide();
-      }
-
       await minHold;
 
-      // ✅ UPDATED REDIRECT — use backend redirect or fallback to /home
+      // Redirect only (no scan here)
       window.location.replace(data.redirect || '/home');
 
-    } catch (ex) {
+    } catch {
       await minHold; setLoading(false);
       showError('Network error. Please try again.');
     }
