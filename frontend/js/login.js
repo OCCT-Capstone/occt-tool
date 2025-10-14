@@ -66,13 +66,24 @@
         return showError(`Login failed (HTTP ${res.status})`);
       }
 
-      // 2) No scan on login. Default LIVE once, then go to Landing.
+      // ✅ NEW — parse JSON so we can read redirect
+      const data = await res.json();
+
+      // 2) Optional: kick live rescan (kept from your flow)
       try {
-        const K = (window.occt?.K || { MODE: 'occt.apiMode' });
-        localStorage.setItem(K.MODE, 'live');
-      } catch (_) {}
+        if (window.occt?.loading?.show) window.occt.loading.show();
+        await fetch('/api/live/rescan?wait=1', { method: 'POST' });
+      } catch (_) {
+        // ignore — still proceed
+      } finally {
+        if (window.occt?.loading?.hide) window.occt.loading.hide();
+      }
+
       await minHold;
-      window.location.replace('/landing');
+
+      // ✅ UPDATED REDIRECT — use backend redirect or fallback to /home
+      window.location.replace(data.redirect || '/home');
+
     } catch (ex) {
       await minHold; setLoading(false);
       showError('Network error. Please try again.');

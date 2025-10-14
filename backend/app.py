@@ -73,8 +73,9 @@ def auth_login():
     p = data.get("password") or ""
     if u == ADMIN_USER and p == ADMIN_PASS:
         session["user"] = u
-        return jsonify(ok=True)
+        return jsonify(ok=True, redirect=url_for("home_page"))
     return jsonify(ok=False, error="invalid"), 401
+
 
 @app.post("/auth/logout")
 def auth_logout():
@@ -93,14 +94,23 @@ def do_logout_canonical():
     return redirect(url_for("login_page"))
 
 # Protected pages
-@app.get("/landing")
+
+@app.get("/home")
 @login_required
-def landing_page():
-    return render_template("landing.html")
+def home_page():
+    return render_template("home.html")
 
 @app.get("/")
+def root_redirect():
+    if session.get("user"):
+        # If already logged in, go to home
+        return redirect(url_for("home_page"))
+    # If not logged in, go to login
+    return redirect(url_for("login_page"))
+
+@app.get("/index")
 @login_required
-def index():
+def dashboard_page():
     return render_template("index.html")
 
 @app.get("/audit")

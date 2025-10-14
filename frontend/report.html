@@ -117,5 +117,14 @@
       </tbody>
     </table>
   </section>
+
+  <script>
+  document.getElementById('logoutLink')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const res = await fetch('/auth/logout', { method: 'POST' });
+    if (res.ok) window.location.href = '/login';
+  });
+</script>
+
 </body>
 </html>
