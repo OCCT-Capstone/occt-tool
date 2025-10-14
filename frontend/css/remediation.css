@@ -8,3 +8,34 @@
 .rem-badge{ padding:.2rem .5rem; border-radius:999px; font-weight:700; font-size:.75rem; background:#eef2ff; border:1px solid #e5e7eb; }
 .rem-body{ color:var(--text); }
 .rem-foot{ margin-top:.6rem; color:var(--muted); font-size:.9rem; }
+
+.rem-grid{ display:grid; gap:1.2rem; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 900px){ .rem-grid{ grid-template-columns: 1fr; } }
+
+    .fix-list{ display:grid; gap:.8rem; }
+    .fix{
+      background: var(--card);
+      border:1px solid var(--ring);
+      border-radius: 12px;
+      padding: .9rem .95rem;
+      box-shadow: var(--shadow);
+    }
+    .fix.fail{ border-left:6px solid var(--red); }
+    .fix.pass{ border-left:6px solid var(--green); }
+
+    .fix .head{
+      display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.35rem;
+    }
+    .fix .title{ font-weight:800; }
+    .fix .meta{ color:var(--muted); font-size:.92rem; display:flex; gap:.8rem; flex-wrap:wrap; }
+    .fix .hint{ margin-top:.45rem; }
+    .empty{ color:var(--muted); padding:.6rem 0; }
+
+    /* reuse existing badge palette */
+    .badge{
+      display:inline-block; padding:.25rem .6rem; border-radius:999px; font-weight:700; font-size:.85rem;
+      background:#e5e7eb; color:#111827;
+    }
+    .badge.sys{ background: rgba(245,158,11,.18); color:#92400e; }
+    .badge.sec{ background: rgba(59,130,246,.18); color:#1e40af; }
+    .badge.acc{ background: rgba(16,185,129,.18); color:#065f46; }

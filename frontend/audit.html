@@ -21,13 +21,12 @@
   <!-- ========== Top Navigation ========== -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
-    <ul class="navlinks">
+    <ul class="navlinks center">
       <li><a href="/home">Home</a></li>
   <li><a href="/index">Dashboard</a></li>
-  <li><a href="/audit">Audit</a></li>
+  <li class="active"><a href="/audit">Audit</a></li>
   <li><a href="/remediation">Remediation</a></li>
   <li><a href="/settings">Settings</a></li>
-  <li><a href="#" id="logoutLink">Logout</a></li>
     </ul>
 
     <div class="nav-right">
@@ -112,18 +111,6 @@
   <!-- Page logic (filters, sort, CSV) -->
   <script defer src="{{ url_for('static', filename='js/loader.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/audit.js') }}"></script>
-<<<<<<< HEAD
   <script defer src="{{ url_for('static', filename='js/lastscan-header.js') }}"></script>
-=======
-
-  <script>
-  document.getElementById('logoutLink')?.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const res = await fetch('/auth/logout', { method: 'POST' });
-    if (res.ok) window.location.href = '/login';
-  });
-</script>
-
->>>>>>> cd519d1 (save home page changes before rebase)
 </body>
 </html>
