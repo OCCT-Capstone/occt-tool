@@ -13,7 +13,7 @@ def run(cmd: list[str]) -> str:
 def iso_now():
     return datetime.now(timezone.utc).isoformat()
 
-# ---------- Control #1: FIA_AFL.1 (Timing of authentication) ----------
+# ---------- Control #1: FIA_AFL.1 (Authentication failure handling ) ----------
 def chk_FIA_AFL_1():
     """Pass if account lockout threshold > 0. Try secedit, fallback net accounts."""
     try:
