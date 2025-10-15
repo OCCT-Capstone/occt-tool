@@ -1,0 +1,111 @@
+[
+  {
+    "Control ID": "AU-002",
+    "CC SFR": "FIA_AFL.1",
+    "Title": "Authentication failure handling",
+    "Windows Command / Source": "secedit /export -> LockoutBadCount",
+    "Expected Value (Pass Criteria)": "≤ 5 invalid attempts",
+    "Severity": "High",
+    "Objective Link": "Reduce OS-level vulnerabilities"
+  },
+  {
+    "Control ID": "LG-001",
+    "CC SFR": "FAU_GEN.1",
+    "Title": "Audit data generation",
+    "Windows Command / Source": "auditpol /get /category:*",
+    "Expected Value (Pass Criteria)": "Audit logon, account management, policy changes enabled",
+    "Severity": "High",
+    "Objective Link": "Detect suspicious/malicious activity"
+  },
+  {
+    "Control ID": "LG-002",
+    "CC SFR": "FAU_SAR.1",
+    "Title": "Audit review",
+    "Windows Command / Source": "Event Viewer Security Log",
+    "Expected Value (Pass Criteria)": "Accessible to authorised security roles only",
+    "Severity": "Medium",
+    "Objective Link": "Detect suspicious/malicious activity"
+  },
+  {
+    "Control ID": "SR-001",
+    "CC SFR": "FMT_SMR.1",
+    "Title": "Security roles",
+    "Windows Command / Source": "Local Security Policy -> User Rights Assignment",
+    "Expected Value (Pass Criteria)": "Roles assigned per policy",
+    "Severity": "High",
+    "Objective Link": "Provide visibility into privileged accounts"
+  },
+  {
+    "Control ID": "LG-003",
+    "CC SFR": "FAU_STG.4",
+    "Title": "Prevention of audit data loss",
+    "Windows Command / Source": "Group Policy -> Audit: Shut down system immediately if unable to log security audits",
+    "Expected Value (Pass Criteria)": "Enabled",
+    "Severity": "High",
+    "Objective Link": "Generate alerts & remediation"
+  },
+  {
+    "Control ID": "TM-001",
+    "CC SFR": "FPT_STM.1",
+    "Title": "Reliable time stamps",
+    "Windows Command / Source": "w32tm /query /status",
+    "Expected Value (Pass Criteria)": "Synced to trusted time source",
+    "Severity": "Medium",
+    "Objective Link": "Display dashboards & audit trails"
+  },
+  {
+    "Control ID": "AU-003",
+    "CC SFR": "FIA_UID.2",
+    "Title": "User identification before any action",
+    "Windows Command / Source": "Group Policy -> Interactive logon: Do not allow anonymous SID",
+    "Expected Value (Pass Criteria)": "Enabled",
+    "Severity": "High",
+    "Objective Link": "Reduce OS-level vulnerabilities (via unique ID enforcement)"
+  },
+  {
+    "Control ID": "AU-004",
+    "CC SFR": "FTA_MCS.1",
+    "Title": "Limit concurrent sessions",
+    "Windows Command / Source": "Group Policy -> Security Options -> Restrict concurrent logons",
+    "Expected Value (Pass Criteria)": "Max 1 session per user",
+    "Severity": "Medium",
+    "Objective Link": "Detect suspicious/malicious activity (via misuse detection)"
+  },
+  {
+    "Control ID": "AU-005",
+    "CC SFR": "FIA_UAU.5",
+    "Title": "Multiple authentication mechanisms",
+    "Windows Command / Source": "Windows Hello / Smart Card / MFA Policy",
+    "Expected Value (Pass Criteria)": "MFA enabled for privileged accounts",
+    "Severity": "High",
+    "Objective Link": "Reduce OS-level vulnerabilities"
+  },
+  {
+    "Control ID": "LG-006",
+    "CC SFR": "FAU_STG.3",
+    "Title": "Audit storage failure action",
+    "Windows Command / Source": "Group Policy -> Audit: Retain log",
+    "Expected Value (Pass Criteria)": "Alerts triggered when log full",
+    "Severity": "High",
+    "Objective Link": "Generate alerts & remediation (prevent audit data loss)"
+  },
+  {
+    "Control ID": "AC-002",
+    "CC SFR": "FDP_ACC.2",
+    "Title": "Complete access control",
+    "Windows Command / Source": "Local Security Policy -> Access Control Policies",
+    "Expected Value (Pass Criteria)": "All access requests logged & controlled",
+    "Severity": "High",
+    "Objective Link": "Privileged account visibility"
+  },
+  {
+    "Control ID": "AU-006",
+    "CC SFR": "FIA_AFL.1",
+    "Title": "Lockout duration & reset window",
+    "Windows Command / Source": "secedit /export /cfg %temp%\\secpol.cfg",
+    "Expected Value (Pass Criteria)": "LockoutDuration ≥ 15 min; ResetLockoutCount ≤ 15 min",
+    "Severity": "Medium",
+    "Objective Link": "Balances security with user accessibility"
+  }
+]
+
