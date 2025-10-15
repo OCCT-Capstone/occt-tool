@@ -1,36 +1,40 @@
 # PASSWORD CONTROLS (Account)
-- id: CC-PW-001
+- id: PW-001
   title: "Password: Minimum Length"
   category: Account
   severity: medium
+  cc_sfr: FMT_MTD.1
   when: "win.password.min_length >= 14"
   pass: "Observed {{win.password.min_length}}, expected >=14"
   fail: "Observed {{win.password.min_length}}, expected >=14"
   remediation: "Increase 'Minimum password length' to 14 or more: Local Security Policy → Account Policies → Password Policy."
 
-- id: CC-PW-002
+- id: PW-002
   title: "Password: Complexity Enabled"
   category: Account
   severity: high
+  cc_sfr: FMT_MTD.1
   when: "win.password.complexity_enabled == True"
   pass: "Complexity enabled per policy"
   fail: "Complexity disabled"
   remediation: "Enable 'Password must meet complexity requirements' in Local Security Policy → Password Policy."
 
-- id: CC-PW-003
+- id: PW-003
   title: "Password: Lockout Threshold"
   category: Account
   severity: high
+  cc_sfr: FIA_AFL.1
   when: "win.password.lockout_threshold > 0 and win.password.lockout_threshold <= 5"
   pass: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   fail: "Observed {{win.password.lockout_threshold}}, expected <=5 and >0"
   remediation: "Set 'Account lockout threshold' to 1–5 invalid attempts in Local Security Policy → Account Lockout Policy."
 
 # FIREWALL (System)
-- id: AU-010
+- id: FW-001
   title: "Firewall default inbound = Block (all profiles)"
   category: System
   severity: high
+  cc_sfr: FDP_ACC.2
   when: "win.firewall.Domain.default_inbound == 'Block' and win.firewall.Private.default_inbound == 'Block' and win.firewall.Public.default_inbound == 'Block'"
   pass: "Default inbound action is Block on Domain, Private, and Public."
   fail: "One or more profiles have inbound default set to Allow."
@@ -39,10 +43,11 @@
     `Set-NetFirewallProfile -Profile Domain,Private,Public -DefaultInboundAction Block`.
     Then verify: `Get-NetFirewallProfile | Select Name,DefaultInboundAction`.
 
-- id: AU-011
+- id: FW-002
   title: "Firewall enabled (Domain/Private/Public)"
   category: System
   severity: high
+  cc_sfr: FDP_ACC.2
   when: "win.firewall.Domain.enabled == true and win.firewall.Private.enabled == true and win.firewall.Public.enabled == true"
   pass: "Windows Defender Firewall is enabled on all profiles."
   fail: "Firewall is disabled on one or more profiles."
@@ -51,10 +56,11 @@
     `Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True`.
     Consider enforcing via GPO: Computer Config > Windows Defender Firewall > Domain/Private/Public Profile > Windows Defender Firewall: Protect all network connections = Enabled.
 
-- id: AU-012
+- id: FW-003
   title: "No inbound RDP/SMB/WinRM allowed on Public profile"
   category: System
   severity: high
+  cc_sfr: FDP_ACC.2
   when: "win.firewall.Public.inbound_allow_rdp == false and win.firewall.Public.inbound_allow_smb == false and win.firewall.Public.inbound_allow_winrm == false"
   pass: "RDP/SMB/WinRM are not exposed to the internet on the Public profile."
   fail: "Public profile allows inbound RDP and/or SMB and/or WinRM."
@@ -65,10 +71,11 @@
     - WinRM: `Disable-NetFirewallRule -Name *WINRM*` or restrict to Domain/Private.
     Prefer scoping to trusted subnets and to Domain/Private profiles.
 
-- id: AU-013
+- id: FW-004
   title: "Inbound block rules present (hygiene)"
   category: System
   severity: medium
+  cc_sfr: FDP_ACC.2
   when: "win.firewall.inbound_block_enabled_count > 0"
   pass: "At least one inbound block rule is present."
   fail: "No enabled inbound block rules detected (policy may be overly permissive)."
@@ -78,10 +85,11 @@
     `New-NetFirewallRule -DisplayName 'Block Legacy SMB' -Direction Inbound -Action Block -Protocol TCP -LocalPort 139,445 -Profile Domain,Private,Public`.
 
 # ADMIN GROUP BASELINE (Account)
-- id: AU-026
+- id: AC-001
   title: "Administrators group members approved"
   category: Account
   severity: high
+  cc_sfr: FDP_ACC.1
   when: "win.admins.checked == true and win.admins.unauthorized_count == 0"
   pass: "Only approved identities in Administrators."
   fail: "Unexpected account(s) are members of Administrators."
@@ -90,10 +98,11 @@
     Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
 
 # SECURITY LOG RETENTION/SIZE (Security)
-- id: AU-021
+- id: AU-001
   title: "Security log retained or sized appropriately"
   category: Security
   severity: medium
+  cc_sfr: FAU_STG.3
   when: "win.evtx.security.retention_enabled == true or win.evtx.security.max_size_mb >= 128"
   pass: "Security log retained or ≥128MB."
   fail: "Security log not retained and <128MB."
@@ -102,10 +111,11 @@
     or increase size: wevtutil sl Security /ms:134217728
 
 # TIME SERVICE (System)
-- id: AU-023
+- id: AU-010
   title: "Time service is healthy and recently synced"
   category: System
   severity: medium
+  cc_sfr: FPT_STM.1
   when: "win.time.service_running == true and win.time.start_type == 'Automatic' and win.time.source != 'Local CMOS Clock' and win.time.hours_since_last_sync <= 24"
   pass: "W32Time running, Automatic, valid source, synced ≤24h."
   fail: "Time service not running/auto, invalid source, or stale sync."
@@ -115,22 +125,24 @@
     w32tm /resync
 
 # AUDIT LOG FILE PROTECTION (Security)
-- id: AU-022
+- id: AU-003
   title: "Security.evtx write access restricted"
   category: Security
   severity: high
+  cc_sfr: FMT_MOF.1
   when: "win.evtx.security.acl_checked == true and win.evtx.security.write_offender_count == 0"
   pass: "Only SYSTEM/Administrators/EventLog have write access."
   fail: "Extra principals have write access to Security.evtx."
   remediation: >
     icacls %SystemRoot%\System32\winevt\Logs\Security.evtx /inheritance:r
-    icacls ... /grant:r "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" "NT SERVICE\EventLog:(M)"
+    icacls ... /grant:r "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" "NT SERVICE/EventLog:(M)"
 
 # PASSWORD: COMPLEXITY/LENGTH/AGE (Account)
-- id: AU-028
+- id: PW-004
   title: "Password complexity and length/age"
   category: Account
   severity: medium
+  cc_sfr: FMT_MTD.1
   when: "win.pw.complexity_required == true and win.pw.min_length >= 8 and win.pw.max_age_days <= 365"
   pass: "Complexity on, min length ≥8, max age ≤365 days."
   fail: "Complexity off or min length/age policy too weak."
@@ -140,10 +152,11 @@
     Minimum password length ≥ 8; Maximum password age ≤ 365.
 
 # SECURITY EVENTS HAVE KEY FIELDS (Security)
-- id: AU-027
+- id: AU-012
   title: "Security events carry key fields"
   category: Security
   severity: low
+  cc_sfr: FAU_GEN.2
   when: "win.evtx.security.sample_has_key_fields == true"
   pass: "Recent events include ID, time, and target user."
   fail: "Events missing key fields; check logging pipeline."
@@ -151,40 +164,44 @@
     Verify audit policy and Windows Event Log service; ensure no filtering drops key fields.
 
 # BUILT-IN ACCOUNTS (Account)
-- id: AU-024
+- id: AC-003
   title: "Built-in Administrator (RID 500) disabled"
   category: Account
   severity: high
+  cc_sfr: FMT_SMR.1
   when: "win.local.admin500_enabled == false"
   pass: "Built-in Administrator account is disabled."
   fail: "Built-in Administrator account is enabled."
   remediation: >
     Disable-LocalUser -Name 'Administrator' (or via GPO).
 
-- id: AU-029
+- id: PW-005
   title: "Password history and minimum age"
   category: Account
   severity: low
+  cc_sfr: FMT_MTD.1
   when: "win.pw.history_size >= 5 and win.pw.min_age_days >= 1"
   pass: "History ≥ 5 and min age ≥ 1 day."
   fail: "History too short or min age is 0."
   remediation: >
     Enforce password history (≥5) and minimum age (≥1 day) via Local Security Policy or GPO.
 
-- id: AU-025
+- id: AC-004
   title: "Guest (RID 501) disabled"
   category: Account
   severity: high
+  cc_sfr: FMT_SMR.1
   when: "win.local.guest501_enabled == false"
   pass: "Guest account is disabled."
   fail: "Guest account is enabled."
   remediation: >
     Disable-LocalUser -Name 'Guest' (or via GPO).
 
-- id: AU-030
+- id: PW-006
   title: "Account lockout duration/reset window"
   category: Account
   severity: medium
+  cc_sfr: FIA_AFL.1
   when: "win.lockout.duration_minutes >= 15 and win.lockout.reset_minutes <= 15"
   pass: "Lockout duration ≥15m and reset window ≤15m."
   fail: "Lockout duration too short or reset window too long."
@@ -192,32 +209,33 @@
     Set via Local Security Policy or GPO: Account lockout duration ≥15; Reset account lockout counter after ≤15.
 
 # --- AUDIT POLICY (exactly three controls) ---
-
-- id: AU-031
+- id: AU-020
   title: "Audit policy: Logon events (Success & Failure)"
   category: Security
   severity: high
+  cc_sfr: FAU_GEN.1
   when: "win.audit.Logon == 'Success,Failure'"
   pass: "Logon auditing is set to Success & Failure."
   fail: "Logon auditing is not set to Success & Failure."
   remediation: >
     auditpol /set /subcategory:"Logon" /success:enable /failure:enable
 
-- id: AU-032
+- id: AU-021
   title: "Audit policy: Account management (Success & Failure)"
   category: Security
   severity: high
-  # Both subcategories must be Success,Failure
+  cc_sfr: FAU_GEN.1
   when: "win.audit.UserAccountManagement == 'Success,Failure' and win.audit.SecurityGroupManagement == 'Success,Failure'"
   pass: "User/Group account management auditing is set to Success & Failure."
   fail: "One or both account management subcategories are not Success & Failure."
   remediation: >
     auditpol /set /subcategory:"User Account Management","Security Group Management" /success:enable /failure:enable
 
-- id: AU-033
+- id: AU-022
   title: "Audit policy: Policy change (Success & Failure)"
   category: Security
   severity: high
+  cc_sfr: FAU_GEN.1
   when: "win.audit.AuditPolicyChange == 'Success,Failure'"
   pass: "Audit Policy Change is set to Success & Failure."
   fail: "Audit Policy Change is not set to Success & Failure."
@@ -225,21 +243,22 @@
     auditpol /set /subcategory:"Audit Policy Change" /success:enable /failure:enable
 
 # --- AUDIT POLICY ADD-ON ---
-
-- id: AU-034
+- id: AU-023
   title: "Audit policy: Account Lockout (Success)"
   category: Security
   severity: high
+  cc_sfr: FAU_GEN.1
   when: "win.audit.AccountLockout == 'Success' or win.audit.AccountLockout == 'Success,Failure'"
   pass: "Account Lockout auditing includes Success."
   fail: "Account Lockout auditing not set to Success."
   remediation: >
     auditpol /set /subcategory:"Account Lockout" /success:enable
 
-- id: AU-035
+- id: AU-024
   title: "Advanced audit policy in use"
   category: Security
   severity: medium
+  cc_sfr: FAU_SAR.3
   when: "win.audit.AdvancedAuditingEnabled == true"
   pass: "Advanced auditing appears enabled (subcategory settings present)."
   fail: "Advanced auditing not detected."
@@ -247,11 +266,11 @@
     Enable Advanced Audit Policy via GPO and set required subcategories.
 
 # --- SYSTEM TIME ADD-ON ---
-
-- id: AU-036
+- id: AU-011
   title: "Time service: NTP peers configured"
   category: System
   severity: medium
+  cc_sfr: FPT_STM.1
   when: "win.time.ntp_configured == true and win.time.source != 'Local CMOS Clock'"
   pass: "NTP peers configured and source is not Local CMOS Clock."
   fail: "NTP peers not configured or source is Local CMOS Clock."
@@ -260,13 +279,29 @@
     w32tm /config /update & w32tm /resync
 
 # --- ADMINS STRICT VARIANT ---
-
-- id: AU-026S
+- id: AC-002
   title: "Administrators group: strict baseline"
   category: Account
   severity: high
+  cc_sfr: FDP_ACC.1
   when: "win.admins.unauthorized_count_strict == 0"
   pass: "Only core identities in Administrators."
   fail: "Unexpected members in Administrators (strict policy)."
   remediation: >
     Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
+
+# AUDIT STORAGE FAILURE ACTION (Security)
+- id: AU-002
+  title: "Audit: shutdown if unable to log security audits"
+  category: Security
+  severity: high
+  cc_sfr: FAU_STG.4
+  when: "win.audit.CrashOnAuditFail == true"
+  pass: "System is configured to shut down on audit logging failure (CrashOnAuditFail=1)."
+  fail: "System does not shut down on audit logging failure (CrashOnAuditFail≠1)."
+  remediation: >
+    Enable: Local Security Policy → Local Policies → Security Options →
+    "Audit: Shut down system immediately if unable to log security audits" = Enabled.
+    Or set via registry (requires reboot):
+    `reg add HKLM\System\CurrentControlSet\Control\Lsa /v CrashOnAuditFail /t REG_DWORD /d 1 /f`
+    and ensure the Security log is writeable at boot.

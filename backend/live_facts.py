@@ -105,8 +105,9 @@ def attach_live_rules_api(live_bp, app):
                 "id": r.get("id"),
                 "title": r.get("title"),
                 "category": r.get("category"),
-                "remediation": r.get("remediation", "")
+                "remediation": r.get("remediation", ""),
+                "severity": r.get("severity", ""),
+                "cc_sfr": r.get("cc_sfr", "")
             }
             for r in rules
         ])
-

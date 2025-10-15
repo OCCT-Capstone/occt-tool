@@ -11,6 +11,8 @@ SAFE_GLOBALS = {"__builtins__": {}}
 # Only match identifier-like tokens (facts IDs), not numbers or operators
 _token_re = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
 
+# backend/live_rules.py
+
 def _normalize_rules(raw):
     """
     Normalizes rules to a common shape used downstream.
@@ -18,6 +20,7 @@ def _normalize_rules(raw):
       - condition: prefers 'when', falls back to 'expr'
       - text: prefers 'pass'/'fail', falls back to 'pass_text'/'fail_text'
       - category defaults 'Security'; severity defaults 'medium'
+      - cc_sfr: carried through if present (supports cc_sfr / ccSfr / cc-sfr)
     """
     rules = []
     for r in (raw or []):
@@ -30,8 +33,10 @@ def _normalize_rules(raw):
             "pass_text":   (r.get("pass") or r.get("pass_text") or "Passed"),
             "fail_text":   (r.get("fail") or r.get("fail_text") or "Failed"),
             "remediation": (r.get("remediation") or ""),
+            "cc_sfr":      (r.get("cc_sfr") or r.get("ccSfr") or r.get("cc-sfr") or ""),
         })
     return rules
+
 
 def load_rules(path: str):
     ext = os.path.splitext(path)[1].lower()

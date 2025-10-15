@@ -43,6 +43,7 @@ from .api import api_bp, sample_bp, live_bp   # <-- add live_bp
 attach_live_facts(live_bp, app)               # add live facts endpoint
 attach_live_compliance(live_bp, app)          # add live compliance stats endpoint
 attach_live_rules_api(live_bp, app)           # add live rules management endpoints
+attach_live_rules_api(sample_bp, app)         # add live rules management endpoints to sample too
 attach_live_runner_api(live_bp, app)          # add live runner endpoints
 app.register_blueprint(sample_bp)             # /api/sample/*
 app.register_blueprint(api_bp)                # /api/*

@@ -121,3 +121,27 @@
 .btn{ display:inline-block; padding:.55rem .9rem; border-radius:10px; background:#2563eb; color:#fff; border:0; cursor:pointer; }
 .btn.secondary{ background:#e5e7eb; color:#111827; }
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* Keep compact columns tight; allow Control/Description to wrap naturally */
+#auditTable td.cell-nw, #auditTable th.cell-nw {
+  white-space: nowrap;
+  width: 1%;
+}
+#auditTable td.cell-wrap {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Severity pill colors (adjust to your theme) */
+.pill { display:inline-block; padding:.15rem .5rem; border-radius:.5rem; font-size:.8rem; line-height:1; }
+.sev-high     { background:#b91c1c; color:#fff; }
+.sev-medium   { background:#d97706; color:#fff; }
+.sev-low      { background:#a19616; color:#fff; }
+
+/* tighten row + align new meta columns */
+.audit-table td, .audit-table th { vertical-align: middle; }
+
+.audit-table .col-narrow    { width: 6rem; }
+.audit-table .col-narrower  { width: 4.5rem; text-align: center; }
+
+.code-line { margin-top: 6px; opacity: .8; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }

@@ -26,6 +26,17 @@ foreach ($line in ($ap -split "`r?`n")) {
 $adv = ($facts | Where-Object { $_.value -match "Success|Failure" }).Count -gt 0
 $facts.Add((New-BoolFact "win.audit.AdvancedAuditingEnabled" $adv))
 
+# --- Crash on audit fail (FAU_STG.4) ---
+$crashOnAuditFail = $false
+try {
+    $val = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -Name 'CrashOnAuditFail' -ErrorAction SilentlyContinue
+    if ($null -ne $val -and $val.CrashOnAuditFail -eq 1) { $crashOnAuditFail = $true }
+} catch { }
+
+# Add to your facts object (example shape)
+$facts.win.audit.CrashOnAuditFail = $crashOnAuditFail
+
+
 [pscustomobject]@{
   collector    = "win_auditpolicy"
   host         = @{ hostname = $env:COMPUTERNAME }
