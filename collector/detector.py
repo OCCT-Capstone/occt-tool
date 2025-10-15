@@ -47,7 +47,7 @@ def chk_FIA_AFL_1():
             "passed": False, "evidence":{"error": str(e)}, "severity":"High"
         }
 
-# ---------- Control #2: FMT_SMR.1 (Admins membership minimal) ----------
+# ---------- Control #2: FMT_SMR.1 (Security roles) ----------
 def chk_FMT_SMR_1():
     """Pass if local Administrators group contains only an allow-list."""
     try:
@@ -73,7 +73,7 @@ def chk_FMT_SMR_1():
             "passed": False, "evidence":{"error": str(e)}, "severity":"High"
         }
 
-# ---------- Control #3: FAU_GEN.1 (Audit policy configured) ----------
+# ---------- Control #3: FAU_GEN.1 (Audit data generation) ----------
 def chk_FAU_GEN_1():
     """
     Pass if required audit subcategories are enabled as specified.
@@ -123,7 +123,7 @@ def chk_FAU_GEN_1():
         "severity": "High"
     }
 
-# ---------- Control #4: FAU_SAR.1 (Audit log retention) ----------
+# ---------- Control #4: FAU_SAR.1 (Audit review) ----------
 def chk_FAU_SAR_1(min_mb: int = 128):
     """
     FAU_SAR.1 — Ensure audit (Security) log is retained sufficiently.
@@ -170,7 +170,7 @@ def chk_FAU_SAR_1(min_mb: int = 128):
             "severity": "High"
         }
 
-# ---------- Control #5: FPT_STM.1 (Reliable time service) ----------
+# ---------- Control #5: FPT_STM.1 (Reliable time stamps) ----------
 def chk_FPT_STM_1(max_age_hours: int = 24):
     """
     Ensure system time is reliable:
@@ -249,7 +249,7 @@ def chk_FPT_STM_1(max_age_hours: int = 24):
             "severity": "High"
         }
 
-# ---------- Control #6: FAU_STG.1 (Protect audit log files: Security.evtx) ----------
+# ---------- Control #6: FAU_STG.4 (Protect audit log files: Security.evtx) ----------
 def chk_FAU_STG_1():
     """
     Only trusted identities may have write-like rights to:
@@ -842,10 +842,10 @@ if __name__ == "__main__":
     if sys.platform != "win32":
         print("Run this on Windows.", file=sys.stderr); sys.exit(1)
 
-    # Compliance — 4 controls now
+    
     comp = [chk_FIA_AFL_1(), chk_FMT_SMR_1(), chk_FAU_GEN_1(), chk_FAU_SAR_1(),  chk_FPT_STM_1(), chk_FAU_STG_1(), chk_FIA_SOS_1(),  chk_FAU_GEN_2(), chk_FIA_UAU_1(), chk_FIA_SOS_2(), chk_FIA_UAU_2(), chk_FIA_AFL_2()]
 
-    # Detections (already wrapped)
+    
     alerts = []
     try:
         xml = query_events_xml([4625, 4728, 4732], lookback_minutes=LOOKBACK_MIN)
