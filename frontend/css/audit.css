@@ -1,147 +1,218 @@
-/* =======================================
+/* =========================================================
    Audit page styles
    - Toolbar (filters)
-   - Table + badges
+   - Table + badges/pills
    - Footer/pager
-   ======================================= */
+   ========================================================= */
 
-/* --- Page title spacing --- */
-.page-title{
-  margin: .4rem 0 1rem;
-}
+/* ---------- Page title ---------- */
+.page-title { margin: .4rem 0 1rem; }
 
-/* --- Toolbar (filters & actions) --- */
+/* ---------- Toolbar (filters & actions) ---------- */
 .toolbar{
-  display: grid;
+  display:grid;
   grid-template-columns: 2fr 1.4fr 1fr auto; /* search | category | outcome | tools */
-  gap: .8rem;
-  align-items: end;
-  margin-bottom: 1rem;
-  text-align: center;
+  gap:.8rem;
+  align-items:end;
+  margin-bottom:1rem;
 }
 
-@media (max-width: 1000px){
-  .toolbar{ grid-template-columns: 1fr 1fr; text-align: center;}
+@media (max-width:1000px){
+  .toolbar{ grid-template-columns:1fr 1fr; }
 }
 
-.field{ display: flex; flex-direction: column; gap: .4rem; }
-.field label{ color: var(--muted); font-size: .9rem; text-align: center; }
+/* audit.css — loaded AFTER style.css */
+.audit-page .container,
+.audit-page .table-card,
+.audit-page .table-wrap {
+  max-width: 1280px;   /* or none */
+  background: var(--bg);
+  color: var(--text);
+}
+
+
+.field{ display:flex; flex-direction:column; gap:.4rem; }
+.field label{ color:var(--muted); font-size:.9rem; }
 
 .input{
-  background: #fff;
-  border: 1px solid var(--ring);
-  border-radius: 10px;
-  padding: .55rem .7rem;
-  outline: none;
+  background:#fff;
+  border:1px solid var(--ring);
+  border-radius:10px;
+  padding:.55rem .7rem;
+  outline:none;
 }
-.select{ padding-right: 2rem; }
+.select{ padding-right:2rem; }
 
-.tools{
-  display:flex; gap:.6rem; justify-self:end; align-items:center;
-}
+.tools{ display:flex; gap:.6rem; justify-self:end; align-items:center; }
 
-/* --- Category chips --- */
+/* ---------- Category chips ---------- */
 .chips{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .5rem;
-  text-align: center;
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:.5rem;
 }
 .chip{
-  background: #eef2ff;
-  border: 1px solid #e5e7eb;
-  padding: .35rem .7rem;
-  border-radius: 999px;
-  font-weight: 600;
-  color: #1f2937;
-  cursor: pointer;
-  text-align: center;
+  background:#eef2ff;
+  border:1px solid #e5e7eb;
+  padding:.35rem .7rem;
+  border-radius:999px;
+  font-weight:600;
+  color:#1f2937;
+  cursor:pointer;
+  text-align:center;
 }
-.chip.active{ background: #dbeafe; border-color:#bfdbfe; }
+.chip.active{ background:#dbeafe; border-color:#bfdbfe; }
 
-/* --- Table wrapper --- */
-.table-card{ margin-top: .2rem; }
+/* ---------- Table wrapper ---------- */
+.table-card{
+  margin-top:.2rem;
+}
 
 .table-wrap{
-  overflow: auto;                  /* horizontal/vertical scroll if needed */
-  border: 1px solid var(--ring);
-  border-radius: 12px;
+  overflow:auto;
+  border:1px solid var(--ring);
+  border-radius:12px;
+  /* keep columns from crushing on medium screens */
+  min-width:1080px;
 }
 
-/* --- Table proper --- */
+/* ---------- Table ---------- */
 .audit-table{
-  width: 100%;
-  border-collapse: separate;       /* so sticky header looks clean */
-  border-spacing: 0;
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  /* deterministic column sizing */
+  table-layout:fixed;
 }
 
 .audit-table thead th{
-  position: sticky; top: 0;
-  background: #f8fafc;
-  text-align: left;
-  font-weight: 700;
-  padding: .8rem .9rem;
-  border-bottom: 1px solid var(--ring);
-  cursor: pointer;                 /* indicates sortable cols */
+  position:sticky; top:0;
+  background:#f8fafc;
+  font-weight:700;
+  padding:.8rem .9rem;
+  border-bottom:1px solid var(--ring);
+  cursor:pointer;             /* sortable */
+}
+
+.audit-table td, .audit-table th{
+  vertical-align:middle;
 }
 
 .audit-table tbody td{
-  padding: .75rem .9rem;
-  border-bottom: 1px dashed var(--ring);
-  vertical-align: top;
+  padding:.75rem .9rem;
+  border-bottom:1px dashed var(--ring);
 }
 
 .audit-table tbody tr:hover{
-  background: #fbfdff;
+  background:rgba(37,99,235,.04);
 }
 
-/* --- Badges & outcome pills --- */
-.badge{
-  display:inline-block; padding: .25rem .6rem; border-radius: 999px;
-  font-weight:600; font-size: .85rem;
+/* ---------- Column widths (by position; no HTML changes) ----------
+   1 Time | 2 Category | 3 Control | 4 ID | 5 CC SFR | 6 Severity
+   7 Outcome | 8 Account/Host | 9 Description                         */
+#auditTable th:nth-child(1), #auditTable td:nth-child(1){ width:130px; }
+#auditTable th:nth-child(2), #auditTable td:nth-child(2){ width:110px; }
+#auditTable th:nth-child(3), #auditTable td:nth-child(3){ width:auto;  } /* flex */
+#auditTable th:nth-child(4), #auditTable td:nth-child(4){ width:90px;  }
+#auditTable th:nth-child(5), #auditTable td:nth-child(5){ width:120px; }
+#auditTable th:nth-child(6), #auditTable td:nth-child(6){ width:95px;  }
+#auditTable th:nth-child(7), #auditTable td:nth-child(7){ width:110px; }
+#auditTable th:nth-child(8), #auditTable td:nth-child(8){ width:140px; white-space:nowrap; }
+#auditTable th:nth-child(9), #auditTable td:nth-child(9){ width:auto;  } /* flex */
+
+/* center compact meta columns */
+#auditTable th:nth-child(4),
+#auditTable th:nth-child(5),
+#auditTable th:nth-child(6),
+#auditTable th:nth-child(7),
+#auditTable td:nth-child(4),
+#auditTable td:nth-child(5),
+#auditTable td:nth-child(6),
+#auditTable td:nth-child(7){
+  text-align:center;
+  white-space:nowrap;
 }
-.badge.sys{ background: rgba(245,158,11,.18); color:#92400e; }
-.badge.sec{ background: rgba(59,130,246,.18); color:#1e40af; }
-.badge.acc{ background: rgba(16,185,129,.18); color:#065f46; }
+
+/* Wrapping behaviour */
+#auditTable td.cell-nw, #auditTable th.cell-nw{ white-space:nowrap; width:1%; }
+#auditTable td.cell-wrap{ white-space:normal; word-break:break-word; }
+
+/* Clamp long text (keeps rows tidy on small heights) */
+.clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.clamp-3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+#auditTable td:nth-child(3),
+#auditTable td:nth-child(9){ overflow:hidden; } /* control & description */
+
+/* ---------- Badges & pills ---------- */
+.badge{
+  display:inline-block;
+  padding:.25rem .6rem;
+  border-radius:999px;
+  font-weight:600;
+  font-size:.85rem;
+}
+.badge.sys{ background:rgba(245,158,11,.18); color:#92400e; }
+.badge.sec{ background:rgba(59,130,246,.18); color:#1e40af; }
+.badge.acc{ background:rgba(16,185,129,.18); color:#065f46; }
 
 .outcome{
-  display:inline-block; padding: .25rem .6rem; border-radius: 6px; font-weight:700;
+  display:inline-block;
+  padding:.28rem .6rem;
+  border-radius:6px;
+  font-weight:700;
 }
-.outcome.pass{ background: rgba(16,185,129,.15); color:#065f46; }
-.outcome.fail{ background: rgba(239,68,68,.15); color:#7f1d1d; }
+.outcome.pass{ background:rgba(16,185,129,.15); color:#065f46; }
+.outcome.fail{ background:rgba(239,68,68,.15); color:#7f1d1d; }
 
-/* --- Footer (count + pager) --- */
+/* Severity pill */
+.pill{
+  display:inline-block;
+  padding:.2rem .5rem;
+  border-radius:.5rem;
+  font-size:.78rem;
+  line-height:1;
+}
+.sev-high{ background:#b91c1c; color:#fff; }
+.sev-medium{ background:#d97706; color:#fff; }
+.sev-low{ background:#a19616; color:#fff; }
+
+/* ---------- Footer (count + pager) ---------- */
 .table-footer{
-  display:flex; justify-content:space-between; align-items:center;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
   padding:.8rem .2rem;
 }
-.count{ color: var(--muted); }
+.count{ color:var(--muted); }
 
-/* --- Buttons (rely on global .btn + variants) --- */
-.btn{ display:inline-block; padding:.55rem .9rem; border-radius:10px; background:#2563eb; color:#fff; border:0; cursor:pointer; }
+/* ---------- Buttons (use global .btn base if present) ---------- */
+.btn{
+  display:inline-block;
+  padding:.55rem .9rem;
+  border-radius:10px;
+  background:#2563eb;
+  color:#fff;
+  border:0;
+  cursor:pointer;
+}
 .btn.secondary{ background:#e5e7eb; color:#111827; }
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
-/* Keep compact columns tight; allow Control/Description to wrap naturally */
-#auditTable td.cell-nw, #auditTable th.cell-nw {
-  white-space: nowrap;
-  width: 1%;
-}
-#auditTable td.cell-wrap {
-  white-space: normal;
-  word-break: break-word;
+/* ---------- Monospace helper for extra tags in Description ---------- */
+.code-line{
+  margin-top:6px;
+  opacity:.8;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-/* Severity pill colors (adjust to your theme) */
-.pill { display:inline-block; padding:.15rem .5rem; border-radius:.5rem; font-size:.8rem; line-height:1; }
-.sev-high     { background:#b91c1c; color:#fff; }
-.sev-medium   { background:#d97706; color:#fff; }
-.sev-low      { background:#a19616; color:#fff; }
+/* ==== Audit page background + container overrides (scoped) ==== */
+body.audit-page {
+  background: var(--bg);
+  color: var(--text);
+}
 
-/* tighten row + align new meta columns */
-.audit-table td, .audit-table th { vertical-align: middle; }
-
-.audit-table .col-narrow    { width: 6rem; }
-.audit-table .col-narrower  { width: 4.5rem; text-align: center; }
-
-.code-line { margin-top: 6px; opacity: .8; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+body.audit-page .container {
+  max-width: 1280px;   /* or none */
+  background: var(--bg);
+  color: var(--text);
+}
