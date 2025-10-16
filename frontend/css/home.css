@@ -172,3 +172,15 @@
         min-height: 85vh;
       }
     }
+
+    /* Applies to both buttons and nav links when disabled */
+.is-disabled,
+[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Extra belt-and-braces for links */
+a.is-disabled {
+  pointer-events: none;   /* blocks mouse interactions */
+}

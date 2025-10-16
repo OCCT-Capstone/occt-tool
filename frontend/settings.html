@@ -18,9 +18,9 @@
     <div class="brand">OCCT</div>
     <ul class="navlinks center">
       <li><a href="/home">Home</a></li>
-      <li><a href="/index">Dashboard</a></li>
-      <li><a href="/audit">Audit</a></li>
-      <li><a href="/remediation">Remediation</a></li>
+      <li><a href="/index" data-live-only>Dashboard</a></li>
+      <li><a href="/audit" data-live-only>Audit</a></li>
+      <li><a href="/remediation" data-live-only>Remediation</a></li>
       <li class="active"><a href="/settings">Settings</a></li>
     </ul>
     <div class="nav-right">
@@ -74,8 +74,8 @@
       <div class="field row">
         <label class="label" for="reportBtn">Compliance report</label>
         <div class="row">
-          <button type="button" id="reportBtn" class="btn">View report</button>
-          <button type="button" id="reportDlBtn" class="btn secondary" style="margin-left:.5rem">Download HTML</button>
+          <button type="button" id="reportBtn" class="btn" data-live-only>View report</button>
+          <button type="button" id="reportDlBtn" class="btn secondary" style="margin-left:.5rem" data-live-only>Download HTML</button>
         </div>
         <br>
         <div class="help">Summarizes Dashboard & Remediation.</div>

@@ -1,49 +1,51 @@
 [
-  { "time": "2025-04-22T17:45:00Z", "category": "System",   "control": "AU-010: Firewall default inbound = Block (all profiles)",           "outcome": "Failed", "account": "SRV-WS001",  "description": "One or more profiles have inbound default set to Allow." },
+  { "time": "2025-04-22T17:45:00Z", "category": "System",   "control": "Firewall default inbound = Block (all profiles)",           "outcome": "Failed", "account": "SRV-WS001", "description": "One or more profiles have inbound default set to Allow." },
 
-  { "time": "2025-04-22T16:20:00Z", "category": "Account",  "control": "CC-PW-002: Password: Complexity Enabled",                           "outcome": "Passed", "account": "SRV-DC01",   "description": "Complexity enabled per policy." },
+  { "time": "2025-04-22T16:20:00Z", "category": "Account",  "control": "Password: Complexity Enabled",                               "outcome": "Passed", "account": "SRV-DC01",  "description": "Complexity enabled per policy." },
 
-  { "time": "2025-04-22T14:05:00Z", "category": "Account",  "control": "AU-026: Administrators group members approved",                    "outcome": "Failed", "account": "SRV-DC01",   "description": "Unexpected account(s) are members of Administrators." },
+  { "time": "2025-04-22T14:05:00Z", "category": "Account",  "control": "Administrators group members approved",                      "outcome": "Failed", "account": "SRV-DC01",  "description": "Unexpected account(s) are members of Administrators." },
 
-  { "time": "2025-04-22T12:37:00Z", "category": "System",   "control": "AU-011: Firewall enabled (Domain/Private/Public)",                  "outcome": "Passed", "account": "SRV-WS001",  "description": "Windows Defender Firewall is enabled on all profiles." },
+  { "time": "2025-04-22T12:37:00Z", "category": "System",   "control": "Firewall enabled (Domain/Private/Public)",                    "outcome": "Passed", "account": "SRV-WS001", "description": "Windows Defender Firewall is enabled on all profiles." },
 
-  { "time": "2025-04-22T12:30:00Z", "category": "Security", "control": "AU-021: Security log retained or sized appropriately",             "outcome": "Passed", "account": "SRV-WS001",  "description": "Security log retained or ≥128MB." },
+  { "time": "2025-04-22T12:30:00Z", "category": "Security", "control": "Security log retained or sized appropriately",               "outcome": "Passed", "account": "SRV-WS001", "description": "Security log retained or ≥128MB." },
 
-  { "time": "2025-04-21T10:01:00Z", "category": "Account",  "control": "CC-PW-001: Password: Minimum Length",                              "outcome": "Failed", "account": "SRV-DC01",   "description": "Observed 8, expected ≥14." },
+  { "time": "2025-04-21T10:01:00Z", "category": "Account",  "control": "Password: Minimum Length",                                   "outcome": "Failed", "account": "SRV-DC01",  "description": "Observed 8, expected ≥14." },
 
-  { "time": "2025-04-20T09:12:00Z", "category": "System",   "control": "AU-012: No inbound RDP/SMB/WinRM allowed on Public profile",       "outcome": "Passed", "account": "SRV-FS01",   "description": "RDP/SMB/WinRM are not exposed on Public profile." },
+  { "time": "2025-04-20T09:12:00Z", "category": "System",   "control": "No inbound RDP/SMB/WinRM allowed on Public profile",         "outcome": "Passed", "account": "SRV-WS001", "description": "RDP/SMB/WinRM are not exposed on Public profile." },
 
-  { "time": "2025-04-19T08:45:00Z", "category": "System",   "control": "AU-013: Inbound block rules present (hygiene)",                    "outcome": "Passed", "account": "SRV-APP01",  "description": "At least one inbound block rule is present." },
+  { "time": "2025-04-19T08:45:00Z", "category": "System",   "control": "Inbound block rules present (hygiene)",                      "outcome": "Passed", "account": "SRV-WS001", "description": "At least one inbound block rule is present." },
 
-  { "time": "2025-04-19T08:35:00Z", "category": "Account",  "control": "AU-024: Built-in Administrator (RID 500) disabled",                "outcome": "Passed", "account": "SRV-WS001",  "description": "Built-in Administrator account is disabled." },
+  { "time": "2025-04-19T08:35:00Z", "category": "Account",  "control": "Built-in Administrator (RID 500) disabled",                  "outcome": "Passed", "account": "SRV-WS001", "description": "Built-in Administrator account is disabled." },
 
-  { "time": "2025-04-18T07:30:00Z", "category": "Security", "control": "AU-022: Security.evtx write access restricted",                    "outcome": "Passed", "account": "SRV-DC01",   "description": "Only SYSTEM/Administrators/EventLog have write access." },
+  { "time": "2025-04-18T07:30:00Z", "category": "Security", "control": "Security.evtx write access restricted",                      "outcome": "Passed", "account": "SRV-DC01",  "description": "Only SYSTEM/Administrators/EventLog have write access." },
 
-  { "time": "2025-04-17T06:15:00Z", "category": "System",   "control": "AU-023: Time service is healthy and recently synced",              "outcome": "Failed", "account": "SRV-DB01",   "description": "Time service not synced in the last 24h." },
+  { "time": "2025-04-17T06:15:00Z", "category": "System",   "control": "Time service is healthy and recently synced",                "outcome": "Failed", "account": "SRV-WS001", "description": "Time service not synced in the last 24h." },
 
-  { "time": "2025-04-17T06:10:00Z", "category": "System",   "control": "AU-036: Time service: NTP peers configured",                       "outcome": "Passed", "account": "SRV-DB01",   "description": "NTP peers configured; source is not Local CMOS Clock." },
+  { "time": "2025-04-17T06:10:00Z", "category": "System",   "control": "Time service: NTP peers configured",                         "outcome": "Passed", "account": "SRV-WS001", "description": "NTP peers configured; source is not Local CMOS Clock." },
 
-  { "time": "2025-04-16T05:55:00Z", "category": "Account",  "control": "CC-PW-003: Password: Lockout Threshold",                           "outcome": "Passed", "account": "SRV-DC01",   "description": "Observed 5, expected ≤5 and >0." },
+  { "time": "2025-04-16T05:55:00Z", "category": "Account",  "control": "Password: Lockout Threshold",                                "outcome": "Passed", "account": "SRV-DC01",  "description": "Observed 5, expected ≤5 and >0." },
 
-  { "time": "2025-04-16T05:50:00Z", "category": "Account",  "control": "AU-030: Account lockout duration/reset window",                    "outcome": "Failed", "account": "SRV-DC01",   "description": "Lockout duration too short or reset window too long." },
+  { "time": "2025-04-16T05:50:00Z", "category": "Account",  "control": "Account lockout duration/reset window",                      "outcome": "Failed", "account": "SRV-DC01",  "description": "Lockout duration too short or reset window too long." },
 
-  { "time": "2025-04-16T05:45:00Z", "category": "Account",  "control": "AU-029: Password history and minimum age",                         "outcome": "Passed", "account": "SRV-DC01",   "description": "History ≥ 5 and minimum age ≥ 1 day." },
+  { "time": "2025-04-16T05:45:00Z", "category": "Account",  "control": "Password history and minimum age",                           "outcome": "Passed", "account": "SRV-DC01",  "description": "History ≥ 5 and minimum age ≥ 1 day." },
 
-  { "time": "2025-04-16T05:40:00Z", "category": "Account",  "control": "AU-028: Password complexity and length/age",                      "outcome": "Passed", "account": "SRV-DC01",   "description": "Complexity on, min length ≥8, max age ≤365 days." },
+  { "time": "2025-04-16T05:40:00Z", "category": "Account",  "control": "Password complexity and length/age",                         "outcome": "Passed", "account": "SRV-DC01",  "description": "Complexity on, min length ≥8, max age ≤365 days." },
 
-  { "time": "2025-04-16T05:35:00Z", "category": "Account",  "control": "AU-025: Guest (RID 501) disabled",                                "outcome": "Passed", "account": "SRV-WS001",  "description": "Guest account is disabled." },
+  { "time": "2025-04-16T05:35:00Z", "category": "Account",  "control": "Guest (RID 501) disabled",                                   "outcome": "Passed", "account": "SRV-WS001", "description": "Guest account is disabled." },
 
-  { "time": "2025-04-15T04:45:00Z", "category": "Security", "control": "AU-031: Audit policy: Logon events (Success & Failure)",          "outcome": "Passed", "account": "SRV-DC01",   "description": "Logon auditing set to Success & Failure." },
+  { "time": "2025-04-15T04:45:00Z", "category": "Security", "control": "Audit policy: Logon events (Success & Failure)",              "outcome": "Passed", "account": "SRV-DC01",  "description": "Logon auditing set to Success & Failure." },
 
-  { "time": "2025-04-15T04:40:00Z", "category": "Security", "control": "AU-032: Audit policy: Account management (Success & Failure)",    "outcome": "Failed", "account": "SRV-DC01",   "description": "One or both account management subcategories not set to Success & Failure." },
+  { "time": "2025-04-15T04:40:00Z", "category": "Security", "control": "Audit policy: Account management (Success & Failure)",        "outcome": "Failed", "account": "SRV-DC01",  "description": "One or both account management subcategories not set to Success & Failure." },
 
-  { "time": "2025-04-15T04:35:00Z", "category": "Security", "control": "AU-033: Audit policy: Policy change (Success & Failure)",         "outcome": "Passed", "account": "SRV-DC01",   "description": "Audit Policy Change set to Success & Failure." },
+  { "time": "2025-04-15T04:35:00Z", "category": "Security", "control": "Audit policy: Policy change (Success & Failure)",             "outcome": "Passed", "account": "SRV-DC01",  "description": "Audit Policy Change set to Success & Failure." },
 
-  { "time": "2025-04-15T04:32:00Z", "category": "Security", "control": "AU-034: Audit policy: Account Lockout (Success)",                  "outcome": "Passed", "account": "SRV-DC01",   "description": "Account Lockout auditing includes Success." },
+  { "time": "2025-04-15T04:32:00Z", "category": "Security", "control": "Audit policy: Account Lockout (Success)",                     "outcome": "Passed", "account": "SRV-DC01",  "description": "Account Lockout auditing includes Success." },
 
-  { "time": "2025-04-15T04:30:00Z", "category": "Security", "control": "AU-035: Advanced audit policy in use",                            "outcome": "Passed", "account": "SRV-DC01",   "description": "Advanced auditing enabled; subcategory settings present." },
+  { "time": "2025-04-15T04:30:00Z", "category": "Security", "control": "Advanced audit policy in use",                                "outcome": "Passed", "account": "SRV-DC01",  "description": "Advanced auditing enabled; subcategory settings present." },
 
-  { "time": "2025-04-15T04:25:00Z", "category": "Security", "control": "AU-027: Security events carry key fields",                        "outcome": "Passed", "account": "SRV-DC01",   "description": "Recent events include ID, time, and target user." },
+  { "time": "2025-04-15T04:25:00Z", "category": "Security", "control": "Security events carry key fields",                            "outcome": "Passed", "account": "SRV-DC01",  "description": "Recent events include ID, time, and target user." },
 
-  { "time": "2025-04-15T04:20:00Z", "category": "Account",  "control": "AU-026S: Administrators group: strict baseline",                  "outcome": "Failed", "account": "SRV-DC01",   "description": "Unexpected members in Administrators (strict policy)." }
+  { "time": "2025-04-15T04:20:00Z", "category": "Account",  "control": "Administrators group: strict baseline",                       "outcome": "Failed", "account": "SRV-DC01",  "description": "Unexpected members in Administrators (strict policy)." },
+
+  { "time": "2025-10-16T10:38:00Z", "category": "Security", "control": "Audit: shutdown if unable to log security audits",            "outcome": "Passed", "account": "SRV-DC01",  "description": "System is configured to shut down on audit logging failure (CrashOnAuditFail=1)." }
 ]

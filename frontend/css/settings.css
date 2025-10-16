@@ -126,3 +126,30 @@
   margin-top: 0.25rem;
   display: block;
 }
+
+/* Shared disabled look */
+.is-disabled,
+[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Ensure disabled links don’t click */
+a.is-disabled { pointer-events: none; }
+
+/* Optional: dim entire gated sections */
+[data-live-section].is-disabled {
+  filter: grayscale(0.2);
+}
+
+/* Optional banner */
+.banner.hidden { display: none; }
+.banner {
+  margin: 0 0 1rem;
+  padding: .6rem .8rem;
+  background: var(--muted-bg, #f5f5f5);
+  border: 1px solid var(--border, #ddd);
+  border-radius: .5rem;
+  font-size: .95rem;
+}
+

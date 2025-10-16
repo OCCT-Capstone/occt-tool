@@ -3,12 +3,12 @@ from flask import (
     Flask, render_template, request, jsonify, redirect, url_for, session
 )
 from functools import wraps
+from sqlalchemy import func
 from .db_util import ensure_c1_columns
 from .live_facts import attach_live_facts, attach_live_compliance, attach_live_rules_api
 from .live_runner import attach_live_runner_api
-import os
-
-from .models import db  # shared SQLAlchemy instance
+from .models import db, AuditEvent
+import os, runpy
 
 app = Flask(
     __name__,
@@ -94,6 +94,16 @@ def do_logout_canonical():
     session.clear()
     return redirect(url_for("login_page"))
 
+@app.get("/api/live/has-scan")
+def api_live_has_scan():
+    count = db.session.query(func.count(AuditEvent.id)).filter_by(source="live").scalar() or 0
+    last_time = db.session.query(func.max(AuditEvent.time)).filter_by(source="live").scalar()
+    return jsonify({
+        "has_scan": count > 0,
+        "count": int(count),
+        "last_time": last_time.isoformat() if last_time else None
+    })
+
 # Protected pages
 
 @app.get("/home")
@@ -135,4 +145,16 @@ def healthz():
     return {"ok": True}
 
 if __name__ == "__main__":
+    import os, sys, subprocess
+
+    # Run samples ingest ONCE before starting server
+    try:
+        is_reloader_child = (os.environ.get("WERKZEUG_RUN_MAIN") == "true")
+        not_using_reloader = (os.environ.get("WERKZEUG_RUN_MAIN") is None)
+        if is_reloader_child or not_using_reloader:
+            subprocess.run([sys.executable, "-m", "backend.ingest_samples"], check=True)
+            print("[auto-ingest] backend.ingest_samples completed")
+    except Exception as e:
+        print(f"[auto-ingest] failed: {e}")
+
     app.run(debug=True, port=5000)

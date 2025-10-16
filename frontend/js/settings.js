@@ -50,9 +50,7 @@
 
   function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms < 0) return '—';
-    if (ms < 90_000) {
-      return `${(ms / 1000).toFixed(1)}s`;
-    }
+    if (ms < 90_000) return `${(ms / 1000).toFixed(1)}s`;
     const m = Math.floor(ms / 60000);
     const s = Math.round((ms % 60000) / 1000);
     return s ? `${m}m ${s}s` : `${m}m`;
@@ -78,7 +76,7 @@
     if (!hint) return;
     const textEl = hint.querySelector('.text') || hint;
     try {
-      const r = await fetch(pageApi('/last-scan'), { headers: { 'X-OCCT-No-Loader': '1' } });
+      const r = await fetch(pageApi('/last-scan'), { headers: { 'X-OCCT-No-Loader': '1' }, cache: 'no-store' });
       const j = await r.json();
       setText(textEl, 'Last scan: ' + (j?.has_data ? fmt(j.completed_at) : '—'));
       hint.hidden = false;
@@ -95,11 +93,12 @@
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');
     updateRescanState();
     refreshHeaderLastScan();
+    refreshScanAvailability(); // NEW: gate controls for current mode
   }
 
   function applyThemeFromToggle() {
     const dark = !!themeDark?.checked;
-    localStorage.setItem(K.THEME, dark ? 'dark' : 'light');
+    try { localStorage.setItem(K.THEME, dark ? 'dark' : 'light'); } catch {}
     document.documentElement.classList.toggle('theme-dark', dark);
     showToast(`Theme: ${dark ? 'Dark' : 'Light'}`);
   }
@@ -146,6 +145,7 @@
         setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
         showToast('LIVE rescan complete');
         await refreshHeaderLastScan();                // update header hint
+        await refreshScanAvailability();              // NEW: controls may become enabled
       } else {
         const msg = body?.message || `LIVE rescan failed (${resp.status})`;
         setText(rescanMsg, msg);
@@ -164,12 +164,13 @@
     try { localStorage.setItem(K.MODE, mode); } catch {}
     showToast(`Data source: ${mode.toUpperCase()}`);
     updateRescanState();
+    refreshHeaderLastScan();
+    refreshScanAvailability(); // NEW
 
     if (mode === 'live') {
       autoRescanLive();
     } else {
       setText(rescanMsg, '');
-      refreshHeaderLastScan();
     }
   }
 
@@ -188,6 +189,7 @@
 
     updateRescanState();
     refreshHeaderLastScan();
+    refreshScanAvailability(); // NEW
 
     showToast('Defaults restored');
 
@@ -235,7 +237,7 @@
       }
 
       let ing  = body?.ingested ?? body?.inserted_total ?? null;
-      let tot  = body?.total_unique ?? body?.unique ?? body?.total ?? null; // not displayed anymore, but used as a signal during polling
+      let tot  = body?.total_unique ?? body?.unique ?? body?.total ?? null;
       let fail = body?.failed_unique ?? body?.failed ?? body?.failed_count ?? null;
       let durMs = pickDurationMs(body); // may be null
 
@@ -258,7 +260,6 @@
         durMs = pickDurationMs(job) ?? durMs;
       }
 
-      // fall back to client stopwatch if server didn't supply duration
       if (!Number.isFinite(durMs)) {
         durMs = (performance && performance.now) ? (performance.now() - t0) : (Date.now() - t0);
       }
@@ -266,6 +267,7 @@
       setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
       showToast('Rescan complete');
       await refreshHeaderLastScan();
+      await refreshScanAvailability(); // NEW
 
     } catch (e) {
       const msg = `Rescan error: ${e}`;
@@ -273,6 +275,87 @@
     } finally {
       rescanBtn.textContent = orig;
       updateRescanState();
+    }
+  }
+
+  // --- Helpers to block anchor interactions when disabled (used in gating) ---
+  function blockNav(e) { e.preventDefault(); e.stopPropagation(); }
+  function blockKey(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
+  }
+
+  // Mode-aware gating for settings controls and sections
+  function setScanControlsEnabled(enabled, meta, mode) {
+    const ctrls = document.querySelectorAll('[data-live-only]');
+    ctrls.forEach(el => {
+      const tag = el.tagName.toUpperCase();
+      const offTitle = `No ${mode.toUpperCase()} scans yet`;
+
+      if (tag === 'A') {
+        if (enabled) {
+          if (el.dataset.hrefBackup) {
+            el.setAttribute('href', el.dataset.hrefBackup);
+            delete el.dataset.hrefBackup;
+          }
+          el.classList.remove('is-disabled');
+          el.removeAttribute('aria-disabled');
+          el.removeAttribute('tabindex');
+          el.removeEventListener('click', blockNav);
+          el.removeEventListener('keydown', blockKey);
+          el.removeAttribute('title');
+        } else {
+          if (!el.dataset.hrefBackup) {
+            el.dataset.hrefBackup = el.getAttribute('href') || '';
+          }
+          el.setAttribute('href', '#');
+          el.classList.add('is-disabled');
+          el.setAttribute('aria-disabled', 'true');
+          el.setAttribute('tabindex', '-1');
+          el.addEventListener('click', blockNav);
+          el.addEventListener('keydown', blockKey);
+          el.title = offTitle;
+        }
+        return;
+      }
+
+      el.disabled = !enabled;
+      el.setAttribute('aria-disabled', String(!enabled));
+      el.classList.toggle('is-disabled', !enabled);
+      if (!enabled) {
+        el.title = offTitle;
+        el.tabIndex = -1;
+      } else {
+        el.removeAttribute('title');
+        el.removeAttribute('tabindex');
+      }
+    });
+
+    const groups = document.querySelectorAll('[data-live-section]');
+    groups.forEach(group => {
+      const isFieldset = group.tagName && group.tagName.toUpperCase() === 'FIELDSET';
+      if (isFieldset) group.disabled = !enabled; // native disables children
+      group.classList.toggle('is-disabled', !enabled);
+      group.setAttribute('aria-disabled', String(!enabled));
+    });
+
+    const banner = document.getElementById('settings-live-banner');
+    if (banner) banner.classList.toggle('hidden', !!enabled);
+  }
+
+  // Query current mode's last-scan availability and gate controls
+  async function refreshScanAvailability() {
+    const mode = getModeLocal(); // 'live' or 'sample'
+    try {
+      const r = await fetch(pageApi('/last-scan'), {
+        cache: 'no-store',
+        headers: { 'X-OCCT-No-Loader': '1' }
+      });
+      if (!r.ok) throw new Error('status ' + r.status);
+      const j = await r.json();
+      const hasScan = !!j?.has_data;
+      setScanControlsEnabled(hasScan, { last_time: j?.completed_at }, mode);
+    } catch {
+      setScanControlsEnabled(false, null, mode);
     }
   }
 
@@ -293,7 +376,11 @@
   /* ---------------- cross-tab sync ---------------- */
 
   window.addEventListener('storage', (e) => {
-    if (e.key === K.MODE) { updateRescanState(); refreshHeaderLastScan(); }
+    if (e.key === K.MODE) {
+      updateRescanState();
+      refreshHeaderLastScan();
+      refreshScanAvailability(); // NEW
+    }
     if (e.key === K.THEME) {
       const dark = (e.newValue || 'light') === 'dark';
       if (themeDark) themeDark.checked = dark;
