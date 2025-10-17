@@ -23,3 +23,16 @@ def ensure_unique_index():
     """
     with db.engine.connect() as con:
         con.execute(text(sql))
+
+def ensure_event_tables():
+    """Create helpful indexes/constraints for new detections feature."""
+    with db.engine.connect() as con:
+        # security_events uniqueness
+        con.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_events_unique
+            ON security_events (source, host, channel, record_id);
+        """))
+        # time indexes
+        con.execute(text("CREATE INDEX IF NOT EXISTS ix_security_events_time ON security_events (time)"))
+        con.execute(text("CREATE INDEX IF NOT EXISTS ix_detections_when ON detections (when)"))
+        con.execute(text("CREATE INDEX IF NOT EXISTS ix_detections_rule ON detections (rule_id, when)"))

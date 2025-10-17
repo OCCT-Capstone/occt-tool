@@ -4,17 +4,13 @@ import json
 from datetime import datetime, timezone
 from flask import Flask
 from sqlalchemy.sql import or_
-from .models import db, AuditEvent
-
-# --- paths ----------------------------------------------------
+from .models import db, AuditEvent, SecurityEvent, Detection
 
 def project_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 def instance_path():
     return os.path.join(os.path.dirname(__file__), "instance")
-
-# --- app factory for CLI usage --------------------------------
 
 def create_app_for_ingest():
     app = Flask(__name__, instance_path=instance_path(), instance_relative_config=True)
@@ -27,14 +23,11 @@ def create_app_for_ingest():
         db.create_all()
     return app
 
-# --- helpers --------------------------------------------------
-
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def parse_time(s: str):
-    """Parse ISO 8601 with optional trailing Z; fall back to now (UTC)."""
     if not s:
         return datetime.now(timezone.utc)
     s = s.strip()
@@ -45,42 +38,16 @@ def parse_time(s: str):
     except Exception:
         return datetime.now(timezone.utc)
 
-# --- main ingest ----------------------------------------------
-
 def ingest_audit(app, audit_json_path):
-    """
-    (Re)load samples/audit.json into the DB WITHOUT touching live rows.
-    Strategy:
-      1) Read JSON.
-      2) Delete only prior sample rows that match these controls/accounts and are not source='live'.
-      3) Insert fresh rows with source='sample' (and host if present).
-    """
     data = load_json(audit_json_path)
     assert isinstance(data, list), "samples/audit.json must be a JSON array"
-
-    # Build quick filters so we ONLY remove prior sample rows for these controls/accounts
-    controls = { (r.get("control") or "").strip() for r in data if r.get("control") }
-    accounts = { (r.get("account") or "").strip() for r in data if r.get("account") }
-
     inserted = 0
     with app.app_context():
-        # 1) Delete ONLY previous sample rows for these controls/accounts.
-        #    Important: we EXPLICITLY avoid deleting source='live'.
-        if controls or accounts:
-            q = db.session.query(AuditEvent)
+        db.session.query(AuditEvent).filter(
+            or_(AuditEvent.source == "sample", AuditEvent.source.is_(None))
+        ).delete(synchronize_session=False)
+        db.session.commit()
 
-            if controls:
-                q = q.filter(AuditEvent.control.in_(list(controls)))
-            if accounts:
-                q = q.filter(AuditEvent.account.in_(list(accounts)))
-
-            # Keep live. Delete rows where source != 'live' (including NULL/empty).
-            q = q.filter(or_(AuditEvent.source.is_(None), AuditEvent.source != "live"))
-
-            q.delete(synchronize_session=False)
-            db.session.commit()
-
-        # 2) Insert the fresh sample rows (tagged as source='sample')
         for row in data:
             evt = AuditEvent(
                 time        = parse_time(row.get("time")),
@@ -89,29 +56,73 @@ def ingest_audit(app, audit_json_path):
                 outcome     = (row.get("outcome") or "Info").strip(),
                 account     = (row.get("account") or "").strip(),
                 description = (row.get("description") or "")[:4096],
+                source      = "sample",
+                host        = (row.get("host") or "").strip()[:128] or None
             )
-            # Tag as sample; set host if the column exists in model
-            try:
-                evt.source = "sample"
-            except Exception:
-                pass
-            try:
-                host_val = (row.get("host") or "").strip()
-                if hasattr(evt, "host"):
-                    evt.host = host_val[:128]
-            except Exception:
-                pass
-
-            db.session.add(evt)
-            inserted += 1
-
+            db.session.add(evt); inserted += 1
         db.session.commit()
-
     return inserted
 
-# Optional CLI: python -m backend.ingest_samples
+def ingest_security_events(app, events_json_path):
+    if not os.path.exists(events_json_path): return 0
+    data = load_json(events_json_path)
+    assert isinstance(data, list), "samples/events.json must be a JSON array"
+    inserted = 0
+    with app.app_context():
+        db.session.query(SecurityEvent).filter(SecurityEvent.source == "sample").delete(synchronize_session=False)
+        db.session.commit()
+        for r in data:
+            se = SecurityEvent(
+                record_id = r.get("record_id"),
+                time      = parse_time(r.get("time")),
+                event_id  = r.get("event_id"),
+                channel   = (r.get("channel") or "Security").strip(),
+                provider  = (r.get("provider") or "").strip(),
+                level     = (r.get("level") or "").strip() or None,
+                account   = (r.get("account") or "").strip() or None,
+                target    = (r.get("target") or "").strip() or None,
+                ip        = (r.get("ip") or "").strip() or None,
+                message   = (r.get("message") or "")[:800],
+                raw_xml   = r.get("raw_xml"),
+                source    = "sample",
+                host      = (r.get("host") or "SAMPLE-HOST").strip()[:128]
+            )
+            db.session.add(se); inserted += 1
+        db.session.commit()
+    return inserted
+
+def ingest_detections(app, alerts_json_path):
+    if not os.path.exists(alerts_json_path): return 0
+    data = load_json(alerts_json_path)
+    assert isinstance(data, list), "samples/alerts.json must be a JSON array"
+    inserted = 0
+    with app.app_context():
+        db.session.query(Detection).filter(Detection.source == "sample").delete(synchronize_session=False)
+        db.session.commit()
+        for a in data:
+            det = Detection(
+                when     = parse_time(a.get("when") or a.get("time")),
+                rule_id  = (a.get("rule_id") or "").strip(),
+                severity = (a.get("severity") or "medium").strip(),
+                summary  = (a.get("summary") or "").strip(),
+                evidence = json.dumps(a.get("evidence") or {}, ensure_ascii=False),
+                account  = (a.get("account") or "").strip() or None,
+                ip       = (a.get("ip") or "").strip() or None,
+                source   = "sample",
+                host     = (a.get("host") or "SAMPLE-HOST").strip()[:128],
+                status   = (a.get("status") or "new").strip()
+            )
+            db.session.add(det); inserted += 1
+        db.session.commit()
+    return inserted
+
 if __name__ == "__main__":
     app = create_app_for_ingest()
-    samples_path = os.path.join(project_root(), "samples", "audit.json")
-    n = ingest_audit(app, samples_path)
-    print(f"[OK] Ingested {n} sample events into {os.path.join(app.instance_path, 'occt.db')}")
+    root = project_root()
+    audit_path  = os.path.join(root, "samples", "audit.json")
+    events_path = os.path.join(root, "samples", "events.json")
+    alerts_path = os.path.join(root, "samples", "alerts.json")
+    n1 = ingest_audit(app, audit_path)
+    n2 = ingest_security_events(app, events_path)
+    n3 = ingest_detections(app, alerts_path)
+    print(f"[OK] Ingested {n1} audit, {n2} events, {n3} detections into {os.path.join(app.instance_path, 'occt.db')}")

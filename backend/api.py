@@ -1,11 +1,12 @@
 # backend/api.py
-from flask import Blueprint, jsonify, request, current_app, make_response, render_template
+from flask import Blueprint, jsonify, request, current_app, make_response, render_template, Response, stream_with_context
 from sqlalchemy import func, desc
-import os, json, datetime as dt
+import os, json, time, datetime as dt
 import threading
 
-from .models import db, AuditEvent
+from .models import db, AuditEvent, Detection
 from .ingest_samples import project_root, ingest_audit
+from .notify import sse_stream, publish_detection, _debug_state, _debug_clear
 
 # --------- Blueprints ---------
 sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")  # DB-backed SAMPLE mode (auto-syncs from file)
@@ -65,7 +66,6 @@ def _ensure_samples_synced():
 
     # --- Lock + re-check to prevent races ---
     with _SAMPLES_SYNC_LOCK:
-        # Re-load state inside the lock
         state = _load_state()
         last = state.get("audit_json_mtime", 0.0)
         if mtime <= last:
@@ -74,7 +74,6 @@ def _ensure_samples_synced():
         state["audit_json_mtime"] = _file_mtime(audit_path)
         _save_state(state)
         current_app.logger.info(f"Samples synced -> DB: {count} rows from {audit_path}")
-
 
 def _force_reingest_samples():
     """Always (re)ingest samples/audit.json into DB, ignoring mtime."""
@@ -85,24 +84,26 @@ def _force_reingest_samples():
     _save_state(state)
     return count
 
+# --------- SQLA helpers ---------
+def _has_column(model, colname: str) -> bool:
+    try:
+        from sqlalchemy import inspect
+        return colname in [c.key for c in inspect(model).c]
+    except Exception:
+        return False
+
 # --------- Unique rows query (API-level dedupe) ---------
 def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=None, q=None):
-    # Decide dataset by blueprint (sample_api vs live_api)
-    mode = "live" if (getattr(request, "blueprint", "") == "live_api") else "sample"
+    # Decide dataset by blueprint (sample_api vs live_api vs api(alias->sample))
+    mode = "live" if (request.blueprint == "live_api") else "sample"
 
     base = db.session.query(AuditEvent)
 
-    # Filter by source only if the column exists on the model (Option A adds it)
-    try:
-        from sqlalchemy import inspect
-        cols = [c.key for c in inspect(AuditEvent).c]
-        if "source" in cols:
-            base = base.filter(AuditEvent.source == mode)
-    except Exception:
-        # If models.py doesn't have 'source' yet, skip filtering (Option B path)
-        pass
+    # Filter by source only if column exists
+    if _has_column(AuditEvent, "source"):
+        base = base.filter(AuditEvent.source == mode)
 
-    # (keep your existing filters below)
+    # Filters
     if category:
         base = base.filter(AuditEvent.category == category)
     if outcome:
@@ -119,6 +120,7 @@ def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=N
             (func.lower(AuditEvent.account).like(like))
         )
 
+    # Dedupe by (time, category, control, outcome, account, description)
     sub = base.subquery()
     uq = db.session.query(
         func.min(sub.c.id).label("id"),
@@ -127,7 +129,6 @@ def _unique_rows_query(*, category=None, outcome=None, date_from=None, date_to=N
         sub.c.time, sub.c.category, sub.c.control, sub.c.outcome, sub.c.account, sub.c.description
     )
     return uq
-
 
 def _unique_count():
     uq_sub = _unique_rows_query().subquery()
@@ -356,7 +357,6 @@ def alias_rescan():
 
 @api_bp.get("/report")
 def alias_report():
-    # use sample report behavior
     return sample_report()
 
 # --------- LIVE endpoints (/api/live/*) ---------
@@ -394,8 +394,10 @@ def live_report():
 def sample_last_scan():
     _ensure_samples_synced()
     # Latest timestamp (for display only)
-    t = db.session.query(func.max(AuditEvent.time))\
-        .filter(AuditEvent.source == "sample").scalar()
+    q = db.session.query(func.max(AuditEvent.time))
+    if _has_column(AuditEvent, "source"):
+        q = q.filter(AuditEvent.source == "sample")
+    t = q.scalar()
 
     if not t:
         return _resp_json({
@@ -406,22 +408,21 @@ def sample_last_scan():
             "host_count": 0
         }, source_header="db-sample")
 
-    # For SAMPLE, show totals across the whole sample dataset (not a time window)
-    total_events = db.session.query(func.count(AuditEvent.id))\
-        .filter(AuditEvent.source == "sample").scalar() or 0
+    # Totals across sample dataset
+    q_total = db.session.query(func.count(AuditEvent.id))
+    q_failed = db.session.query(func.count(AuditEvent.id)).filter(func.lower(AuditEvent.outcome) == "failed")
+    q_rows = db.session.query(AuditEvent.host, AuditEvent.account)
 
-    failed_events = db.session.query(func.count(AuditEvent.id))\
-        .filter(
-            AuditEvent.source == "sample",
-            func.lower(AuditEvent.outcome) == "failed"
-        ).scalar() or 0
+    if _has_column(AuditEvent, "source"):
+        q_total  = q_total.filter(AuditEvent.source == "sample")
+        q_failed = q_failed.filter(AuditEvent.source == "sample")
+        q_rows   = q_rows.filter(AuditEvent.source == "sample")
 
-    # Infer hosts when 'host' is empty: use 'account' values that look like machine names.
-    # Ignore known non-host accounts.
-    rows = db.session.query(AuditEvent.host, AuditEvent.account)\
-        .filter(AuditEvent.source == "sample").all()
+    total_events  = q_total.scalar() or 0
+    failed_events = q_failed.scalar() or 0
 
-    NON_HOST_ACCOUNTS = {"domain", "ad-policy", "ad policy", "adpolicy", "adminGroup".lower(), "all users"}
+    rows = q_rows.all()
+    NON_HOST_ACCOUNTS = {"domain", "ad-policy", "ad policy", "adpolicy", "admingroup".lower(), "all users"}
     host_set = set()
     for h, a in rows:
         h = (h or "").strip()
@@ -429,8 +430,6 @@ def sample_last_scan():
         if h:
             host_set.add(h)
             continue
-        # Heuristic: treat account as host if it's not a known non-host label and has no spaces
-        # (e.g., SRV-WS001, SRV-DB01, SRV-FS01)
         if a and " " not in a and a.lower() not in NON_HOST_ACCOUNTS:
             host_set.add(a)
 
@@ -442,20 +441,24 @@ def sample_last_scan():
         "host_count": int(len(host_set))
     }, source_header="db-sample")
 
-
-
 @live_bp.get("/last-scan")
 def live_last_scan():
-    t = db.session.query(func.max(AuditEvent.time)).filter(AuditEvent.source == "live").scalar()
+    # Most recent minute bucket for live
+    q = db.session.query(func.max(AuditEvent.time))
+    if _has_column(AuditEvent, "source"):
+        q = q.filter(AuditEvent.source == "live")
+    t = q.scalar()
     if not t:
         return _resp_json({"has_data": False, "completed_at": None, "event_count": 0, "failed_count": 0, "host_count": 0}, source_header="db-live")
+
     start = t.replace(second=0, microsecond=0)
     end   = start + dt.timedelta(minutes=1)
-    rows = db.session.query(AuditEvent).filter(
-        AuditEvent.source == "live",
-        AuditEvent.time >= start,
-        AuditEvent.time < end
-    ).all()
+
+    rows_q = db.session.query(AuditEvent).filter(AuditEvent.time >= start, AuditEvent.time < end)
+    if _has_column(AuditEvent, "source"):
+        rows_q = rows_q.filter(AuditEvent.source == "live")
+    rows = rows_q.all()
+
     return _resp_json({
         "has_data": True,
         "completed_at": t.isoformat() + "Z",
@@ -463,3 +466,38 @@ def live_last_scan():
         "failed_count": sum(1 for r in rows if (r.outcome or "").lower() == "failed"),
         "host_count": len({(r.host or "").strip() for r in rows if (r.host or "").strip()}),
     }, source_header="db-live")
+
+# --------- REAL-TIME SSE stream (LIVE) ---------
+@live_bp.get("/stream")
+def live_stream():
+    """Server-Sent Events: stream detections to the UI in real time (no replay)."""
+    resp = Response(sse_stream(), mimetype="text/event-stream")
+    resp.headers["Cache-Control"] = "no-cache, no-transform"
+    resp.headers["Connection"] = "keep-alive"
+    resp.headers["X-Accel-Buffering"] = "no"
+    return resp
+
+# --------- (Optional) test endpoint to emit a demo detection ---------
+@live_bp.post("/notify/test")
+def live_notify_test():
+    now = dt.datetime.utcnow().isoformat() + "Z"
+    sample = {
+        "rule_id": "TEST_RULE",
+        "summary": "Demo detection event",
+        "severity": "low",
+        "account": "demo",
+        "host": "localhost",
+        "ip": "127.0.0.1",
+        "when": now,
+    }
+    n = publish_detection(sample)
+    return _resp_json({"ok": True, "when": now, "id": None, "published_to_clients": n}, source_header="db-live")
+
+# --------- debug (optional) ---------
+@live_bp.get("/debug/notify-state")
+def live_notify_state():
+    return _resp_json(_debug_state(), source_header="db-live")
+
+@live_bp.post("/debug/notify-clear")
+def live_notify_clear():
+    return _resp_json(_debug_clear(), source_header="db-live")

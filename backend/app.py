@@ -4,11 +4,62 @@ from flask import (
 )
 from functools import wraps
 from sqlalchemy import func
-from .db_util import ensure_c1_columns
+from .db_util import ensure_c1_columns, ensure_unique_index, ensure_event_tables
 from .live_facts import attach_live_facts, attach_live_compliance, attach_live_rules_api
 from .live_runner import attach_live_runner_api
+from .detections_api import attach_detections_api
 from .models import db, AuditEvent
-import os, runpy
+from .live_poller import start_live_poller_if_enabled
+import os
+
+# ---------------- defaults + bootstrap of instance/settings.py ----------------
+
+DEFAULT_SETTINGS = """# Auto-created by OCCT on first run.
+# Toggle live detections poller (requires Administrator on Windows)
+DETECTIONS_LIVE = True
+DETECTIONS_EVENT_IDS = [4625, 4728, 4732, 4624]
+DETECTIONS_LOOKBACK_MIN = 5     # minutes
+DETECTIONS_INTERVAL = 15        # seconds
+BRUTE_4625_THRESHOLD = 5
+"""
+
+def ensure_instance_settings_file(app):
+    """Create instance/settings.py with defaults if it does not exist."""
+    path = os.path.join(app.instance_path, "settings.py")
+    if not os.path.exists(path):
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(DEFAULT_SETTINGS)
+            print(f"[bootstrap] wrote default {path}")
+        except Exception as e:
+            print(f"[bootstrap] could not write {path}: {e}")
+
+def apply_default_config(app):
+    """Set in-code defaults; allow optional env overrides to keep flexibility."""
+    app.config.from_mapping(
+        DETECTIONS_LIVE=True,
+        DETECTIONS_EVENT_IDS=[4625, 4728, 4732, 4624],
+        DETECTIONS_LOOKBACK_MIN=5,
+        DETECTIONS_INTERVAL=15,
+        BRUTE_4625_THRESHOLD=5,
+    )
+    # Optional: allow env overrides if provided
+    def env_int(name, default):
+        v = os.getenv(name)
+        return int(v) if (v and v.isdigit()) else default
+    def env_csv_int(name, default_list):
+        v = os.getenv(name)
+        if not v: return default_list
+        return [int(x) for x in v.split(",") if x.strip().isdigit()]
+
+    if "OCCT_DETECTIONS_LIVE" in os.environ:
+        app.config["DETECTIONS_LIVE"] = (os.getenv("OCCT_DETECTIONS_LIVE") == "1")
+    app.config["BRUTE_4625_THRESHOLD"]   = env_int("OCCT_BRUTE_4625_THRESHOLD",   app.config["BRUTE_4625_THRESHOLD"])
+    app.config["DETECTIONS_INTERVAL"]     = env_int("OCCT_DETECTIONS_INTERVAL",     app.config["DETECTIONS_INTERVAL"])
+    app.config["DETECTIONS_LOOKBACK_MIN"] = env_int("OCCT_DETECTIONS_LOOKBACK_MIN", app.config["DETECTIONS_LOOKBACK_MIN"])
+    app.config["DETECTIONS_EVENT_IDS"]    = env_csv_int("OCCT_DETECTIONS_EVENT_IDS", app.config["DETECTIONS_EVENT_IDS"])
+
+# ---------------------------------- Flask app ---------------------------------
 
 app = Flask(
     __name__,
@@ -18,13 +69,18 @@ app = Flask(
     instance_relative_config=True,
 )
 
+# Ensure instance/ exists early
+os.makedirs(app.instance_path, exist_ok=True)
+
+# Apply sane defaults, then create + load instance settings (if any)
+apply_default_config(app)
+ensure_instance_settings_file(app)
+app.config.from_pyfile("settings.py", silent=True)
+
 # Sessions
 app.config["SECRET_KEY"] = os.getenv("OCCT_SECRET_KEY", "dev-secret-change-me")
 app.config["SESSION_COOKIE_NAME"] = "occt_session"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-
-# Ensure instance/
-os.makedirs(app.instance_path, exist_ok=True)
 
 # SQLite
 db_path = os.path.join(app.instance_path, "occt.db")
@@ -35,21 +91,25 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
     ensure_c1_columns()
-    from .db_util import ensure_unique_index
     ensure_unique_index()
+    # ensure_event_tables()  # call if you need to create extra detections tables
 
-# Blueprints
-from .api import api_bp, sample_bp, live_bp   # <-- add live_bp
-attach_live_facts(live_bp, app)               # add live facts endpoint
-attach_live_compliance(live_bp, app)          # add live compliance stats endpoint
-attach_live_rules_api(live_bp, app)           # add live rules management endpoints
-attach_live_rules_api(sample_bp, app)         # add live rules management endpoints to sample too
-attach_live_runner_api(live_bp, app)          # add live runner endpoints
-app.register_blueprint(sample_bp)             # /api/sample/*
-app.register_blueprint(api_bp)                # /api/*
-app.register_blueprint(live_bp)               # /api/live/*
+# Blueprints + APIs
+from .api import api_bp, sample_bp, live_bp
+start_live_poller_if_enabled(app)               # start background poller if enabled
+attach_live_facts(live_bp, app)                 # live facts endpoint
+attach_live_compliance(live_bp, app)            # live compliance stats endpoint
+attach_live_rules_api(live_bp, app)             # live rules management endpoints
+attach_live_rules_api(sample_bp, app)           # also expose rules mgmt for sample
+attach_live_runner_api(live_bp, app)            # live runner endpoints
+attach_detections_api(sample_bp, live_bp, app)  # detections endpoints (both modes)
 
-# Auth (unchanged)
+app.register_blueprint(sample_bp)               # /api/sample/*
+app.register_blueprint(api_bp)                  # /api/*
+app.register_blueprint(live_bp)                 # /api/live/*
+
+# ------------------------------- Auth + pages ---------------------------------
+
 ADMIN_USER = "admin"
 ADMIN_PASS = "Password123!"
 
@@ -77,7 +137,6 @@ def auth_login():
         return jsonify(ok=True, redirect=url_for("home_page"))
     return jsonify(ok=False, error="invalid"), 401
 
-
 @app.post("/auth/logout")
 def auth_logout():
     session.clear()
@@ -85,7 +144,6 @@ def auth_logout():
 
 @app.get("/logout")
 def do_logout_alias():
-    # clear session and go back to login
     session.clear()
     return redirect(url_for("login_page"))
 
@@ -105,7 +163,6 @@ def api_live_has_scan():
     })
 
 # Protected pages
-
 @app.get("/home")
 @login_required
 def home_page():
@@ -114,15 +171,18 @@ def home_page():
 @app.get("/")
 def root_redirect():
     if session.get("user"):
-        # If already logged in, go to home
         return redirect(url_for("home_page"))
-    # If not logged in, go to login
     return redirect(url_for("login_page"))
 
 @app.get("/index")
 @login_required
 def dashboard_page():
     return render_template("index.html")
+
+@app.get("/detections")
+@login_required
+def detections_page():
+    return render_template("detections.html")
 
 @app.get("/audit")
 @login_required
@@ -144,8 +204,9 @@ def settings_page():
 def healthz():
     return {"ok": True}
 
+# -------------------------------- Entry point ---------------------------------
 if __name__ == "__main__":
-    import os, sys, subprocess
+    import sys, subprocess
 
     # Run samples ingest ONCE before starting server
     try:

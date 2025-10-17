@@ -1,0 +1,34 @@
+[
+  {
+    "when": "2025-10-16T10:45:00Z",
+    "rule_id": "BRUTE_4625",
+    "severity": "high",
+    "summary": "5 failed logons for 'svc_backup' in last 5 min",
+    "evidence": {
+      "event_id": 4625,
+      "account": "svc_backup",
+      "count": 5,
+      "window_min": 5,
+      "last_ip": "203.0.113.42"
+    },
+    "account": "svc_backup",
+    "ip": "203.0.113.42",
+    "host": "SRV-WS001",
+    "status": "new"
+  },
+  {
+    "when": "2025-10-16T10:44:05Z",
+    "rule_id": "ADMIN_CHANGE_4728_4732",
+    "severity": "high",
+    "summary": "User added to privileged group 'Administrators': CONTOSO\\jdoe",
+    "evidence": {
+      "event_ids": [4728],
+      "group": "Administrators",
+      "member": "CONTOSO\\jdoe"
+    },
+    "account": "jdoe",
+    "ip": "N/A",
+    "host": "SRV-DC01",
+    "status": "new"
+  }
+]

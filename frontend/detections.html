@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Detections</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Load site.js ONCE (defer so DOM exists when it runs) -->
+  <script src="{{ url_for('static', filename='js/site.js') }}" defer></script>
+
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/detections.css" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
+</head>
+<body class="page-detections">
+  <!-- Topbar (matches site) -->
+  <nav class="topbar">
+    <div class="brand">OCCT</div>
+    <ul class="navlinks center">
+      <li><a href="/home">Home</a></li>
+      <li><a href="/index" data-live-only>Dashboard</a></li>
+      <li class="active"><a href="/detections" data-live-only>Detections</a></li>
+      <li><a href="/audit" data-live-only>Audit</a></li>
+      <li><a href="/remediation" data-live-only>Remediation</a></li>
+      <li><a href="/settings">Settings</a></li>
+    </ul>
+    <div class="nav-right">
+      <small id="lastScanHeaderHint" class="nav-hint muted">
+        <span class="text">Last scan: —</span>
+      </small>
+    </div>
+  </nav>
+
+  <!-- Page content constrained to site max width -->
+  <main class="maxwrap">
+    <header class="page-header">
+      <h1>Detections</h1>
+      <div id="modeBadge" class="badge">LIVE</div>
+    </header>
+
+    <!-- Banner when no data in current mode -->
+    <div id="noDataBanner" class="banner hidden">
+      No <span class="mode"></span> scans yet — run a scan or switch to SAMPLE.
+    </div>
+
+    <!-- Controls card (tabs + filters) -->
+    <section class="card controls-card">
+      <div class="card-body">
+        <section class="tabs">
+          <button id="tabAlerts" class="tab active" type="button">Detections</button>
+          <button id="tabEvents" class="tab" type="button">Events</button>
+        </section>
+
+        <!-- Filters (unchanged IDs so JS keeps working) -->
+        <section class="filters">
+          <div class="row for-alerts">
+            <label>Severity
+              <select id="fSeverity">
+                <option value="">All</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+            <label>Status
+              <select id="fStatus">
+                <option value="">All</option>
+                <option value="new">New</option>
+                <option value="ack">Acknowledged</option>
+                <option value="muted">Muted</option>
+              </select>
+            </label>
+            <label>Rule
+              <input id="fRule" type="text" placeholder="e.g. BRUTE_4625" />
+            </label>
+            <label>Search
+              <input id="fQAlerts" type="text" placeholder="summary / evidence" />
+            </label>
+            <button id="btnSearchAlerts" class="btn" type="button">Search</button>
+            <button id="btnClearAlerts" class="btn btn-secondary" type="button">Clear</button>
+          </div>
+
+          <div class="row for-events hidden">
+            <label>Event ID(s)
+              <input id="fEventId" type="text" placeholder="4625, 4728" />
+            </label>
+            <label>Account
+              <input id="fAccount" type="text" placeholder="user or svc_*" />
+            </label>
+            <label>IP
+              <input id="fIp" type="text" placeholder="203.0.113.*" />
+            </label>
+            <label>Search
+              <input id="fQEvents" type="text" placeholder="message / provider" />
+            </label>
+            <button id="btnSearchEv" class="btn" type="button">Search</button>
+            <button id="btnClearEv" class="btn btn-secondary" type="button">Clear</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Tables -->
+    <section id="alertsPane" class="pane">
+      <div class="card">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Severity</th>
+              <th>Rule</th>
+              <th>Summary</th>
+              <th>Account</th>
+              <th>IP</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="alertsTbody"></tbody>
+        </table>
+        <div class="pager">
+          <button id="alertsPrev" class="btn btn-secondary" type="button">Prev</button>
+          <span id="alertsPage" class="pager-label">Page 1</span>
+          <button id="alertsNext" class="btn btn-secondary" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="eventsPane" class="pane hidden">
+      <div class="card">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event ID</th>
+              <th>Account</th>
+              <th>IP</th>
+              <th>Message</th>
+              <th>Host</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="eventsTbody"></tbody>
+        </table>
+        <div class="pager">
+          <button id="eventsPrev" class="btn btn-secondary" type="button">Prev</button>
+          <span id="eventsPage" class="pager-label">Page 1</span>
+          <button id="eventsNext" class="btn btn-secondary" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- page-specific scripts -->
+  <script src="/js/detections.js" defer></script>
+  <script src="/js/lastscan-header.js" defer></script>
+</body>
+</html>

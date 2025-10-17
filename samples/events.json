@@ -1,0 +1,93 @@
+[
+  {
+    "record_id": 10001,
+    "time": "2025-10-16T10:40:00Z",
+    "event_id": 4625,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account failed to log on. Account Name: svc_backup. Logon Type: 3. Failure Reason: Unknown user name or bad password. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  },
+  {
+    "record_id": 10002,
+    "time": "2025-10-16T10:41:00Z",
+    "event_id": 4625,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account failed to log on. Account Name: svc_backup. Logon Type: 3. Failure Reason: Unknown user name or bad password. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  },
+  {
+    "record_id": 10003,
+    "time": "2025-10-16T10:41:45Z",
+    "event_id": 4625,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account failed to log on. Account Name: svc_backup. Logon Type: 3. Failure Reason: Unknown user name or bad password. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  },
+  {
+    "record_id": 10004,
+    "time": "2025-10-16T10:42:30Z",
+    "event_id": 4625,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account failed to log on. Account Name: svc_backup. Logon Type: 3. Failure Reason: Unknown user name or bad password. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  },
+  {
+    "record_id": 10005,
+    "time": "2025-10-16T10:43:10Z",
+    "event_id": 4625,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account failed to log on. Account Name: svc_backup. Logon Type: 3. Failure Reason: Unknown user name or bad password. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  },
+  {
+    "record_id": 10006,
+    "time": "2025-10-16T10:44:00Z",
+    "event_id": 4728,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "Administrator",
+    "target": "CONTOSO\\jdoe",
+    "ip": "N/A",
+    "message": "A member was added to a security-enabled global group. Group Name: Administrators  Member Name: CONTOSO\\jdoe  Member SID: S-1-5-21-...  Subject: Administrator",
+    "host": "SRV-DC01"
+  },
+  {
+    "record_id": 10007,
+    "time": "2025-10-16T10:44:30Z",
+    "event_id": 4624,
+    "channel": "Security",
+    "provider": "Microsoft-Windows-Security-Auditing",
+    "level": "Information",
+    "account": "svc_backup",
+    "target": "svc_backup",
+    "ip": "203.0.113.42",
+    "message": "An account was successfully logged on. Account Name: svc_backup. Logon Type: 3. Source Network Address: 203.0.113.42",
+    "host": "SRV-WS001"
+  }
+]
