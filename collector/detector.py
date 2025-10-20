@@ -1,4 +1,4 @@
-# detector.py — Controls 1–3 + resilient detections
+# detector.py 
 import subprocess, re, json, sys, os
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
@@ -91,7 +91,7 @@ def chk_FAU_GEN_1():
     def get_setting(name: str):
         try:
             out = run(["auditpol", "/get", f"/subcategory:{name}"])
-            # e.g. "Logon                                 Success and Failure"
+                                           
             m = re.search(rf"^\s*{re.escape(name)}\s+(.+)$", out, re.M)
             val = m.group(1).strip() if m else "Unknown"
             vs = set()
@@ -131,11 +131,7 @@ def chk_FAU_SAR_1(min_mb: int = 128):
     """
     try:
         out = run(["wevtutil", "gl", "Security"])
-        # Example lines:
-        #   maxSize: 209715200
-        #   retention: false
-        #   autoBackup: false
-        #   enabled: true
+        
         m_size = re.search(r"^\s*maxSize:\s*(\d+)\s*$", out, re.M)
         m_ret  = re.search(r"^\s*retention:\s*(true|false)\s*$", out, re.M | re.I)
         size_b = int(m_size.group(1)) if m_size else None
@@ -180,41 +176,41 @@ def chk_FPT_STM_1(max_age_hours: int = 24):
       - Last Successful Sync within max_age_hours
     """
     try:
-        # 1) Service status + start type (PowerShell gives clean fields)
+       
         ps = "Get-Service w32time | Select-Object -ExpandProperty Status; " \
              "(Get-WmiObject -Class Win32_Service -Filter \"Name='w32time'\").StartMode"
         out = run(["powershell","-NoProfile","-Command", ps])
         lines = [l.strip() for l in out.splitlines() if l.strip()]
         status = lines[0] if lines else "Unknown"
-        start_mode = (lines[1] if len(lines) > 1 else "Unknown")  # Auto | Manual | Disabled
+        start_mode = (lines[1] if len(lines) > 1 else "Unknown") 
 
         is_running = status.lower() == "running"
-        is_auto = start_mode.lower().startswith("auto")  # Auto or Auto (Delayed Start)
+        is_auto = start_mode.lower().startswith("auto")  
 
-        # 2) NTP configuration
+        
         cfg = run(["w32tm","/query","/configuration"])
         m_ntp = re.search(r"^NtpServer:\s*(.+)$", cfg, re.M | re.I)
         ntp_server_raw = (m_ntp.group(1).strip() if m_ntp else "")
         has_ntp = bool(ntp_server_raw and ntp_server_raw.lower() != "not configured")
 
-        # 3) Sync status (Source + last success time)
+       
         st = run(["w32tm","/query","/status"])
         m_source = re.search(r"^Source:\s*(.+)$", st, re.M)
         source = (m_source.group(1).strip() if m_source else "Unknown")
         not_cmos = source.lower() != "local cmos clock"
 
-        # "Last Successful Sync Time: 9/1/2025 1:23:45 PM"
+     
         m_last = re.search(r"^Last Successful Sync Time:\s*(.+)$", st, re.M | re.I)
         last_ok = False
         last_when_iso = None
         if m_last:
             raw = m_last.group(1).strip()
-            # Let Windows parse it via PowerShell to avoid locale headaches
+           
             try:
                 ps_parse = f"[datetime]::Parse('{raw}').ToUniversalTime().ToString('o')"
                 iso = run(["powershell","-NoProfile","-Command", ps_parse]).strip()
                 last_when_iso = iso
-                # Compare to now
+             
                 from datetime import datetime, timezone
                 last_dt = datetime.fromisoformat(iso.replace('Z','+00:00'))
                 age_h = (datetime.now(timezone.utc) - last_dt).total_seconds()/3600.0
