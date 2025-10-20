@@ -95,7 +95,7 @@
   fail: "Unexpected account(s) are members of Administrators."
   remediation: >
     Review and remove unapproved members:
-    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
+    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member 'MEMBER_NAME'.
 
 # SECURITY LOG RETENTION/SIZE (Security)
 - id: AU-001
@@ -288,7 +288,7 @@
   pass: "Only core identities in Administrators."
   fail: "Unexpected members in Administrators (strict policy)."
   remediation: >
-    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member <name>.
+    Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member 'MEMBER_NAME'.
 
 # AUDIT STORAGE FAILURE ACTION (Security)
 - id: AU-002

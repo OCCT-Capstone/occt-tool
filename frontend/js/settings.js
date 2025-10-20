@@ -124,28 +124,62 @@
     }
   }
 
+  /* ---------------- LIVE job polling helper (prevents SAMPLE mix) ---------------- */
+
+  // Always pull final numbers from the LIVE job endpoint when a job_id exists.
+  // This endpoint calculates totals from source='live', so SAMPLE rows can't contaminate it.
+  async function pullLiveJobTotals(baseRescanUrl, jobId) {
+    try {
+      const jobsBase = baseRescanUrl.replace(/\/rescan(\?.*)?$/, '/jobs/');
+      const url = `${jobsBase}${jobId}?verbose=1`;
+      const jr = await fetch(url, { headers: { 'X-OCCT-No-Loader': '1' }, cache: 'no-store' });
+      const j = await jr.json().catch(() => ({}));
+      const num = (v) => (v == null ? null : Number(v));
+      return {
+        ing:  num(j?.inserted_total ?? j?.ingested ?? null),
+        fail: num(j?.failed_count  ?? j?.failed    ?? null),
+        dur:  pickDurationMs(j)
+      };
+    } catch {
+      return { ing: null, fail: null, dur: null };
+    }
+  }
+
   /* ---------------- auto-rescan on switch to LIVE ---------------- */
 
   async function autoRescanLive() {
-    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    const started = (performance && performance.now) ? performance.now() : Date.now();
     try {
       if (window.occt?.loading?.show) window.occt.loading.show();
 
-      const resp = await fetch('/api/live/rescan?wait=1', { method: 'POST' });
+      // Always hit LIVE directly
+      const rescanUrl = '/api/live/rescan?wait=1';
+      const resp = await fetch(rescanUrl, { method: 'POST' });
       const body = await resp.json().catch(() => ({}));
 
-      // durations: prefer server, else client stopwatch
-      const durMs = pickDurationMs(body) ?? ((performance && performance.now) ? (performance.now() - t0) : (Date.now() - t0));
+      // Prefer server-reported duration, else our stopwatch
+      let durMs = pickDurationMs(body) ?? ((performance && performance.now) ? (performance.now() - started) : (Date.now() - started));
 
-      const numberOrDash = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : '—');
-      const ing  = body?.ingested ?? body?.inserted_total;
-      const fail = body?.failed_unique ?? body?.failed ?? body?.failed_count;
+      // LIVE-only fields (do NOT read *_unique)
+      const toNum = (v) => (v == null ? null : Number(v));
+      let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
+      let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
+
+      // If a job exists, ALWAYS pull final LIVE totals (prevents mixing)
+      if (body?.job_id) {
+        const j = await pullLiveJobTotals('/api/live/rescan', body.job_id);
+        if (j.ing  != null) ing  = j.ing;
+        if (j.fail != null) fail = j.fail;
+        if (j.dur  != null) durMs = j.dur;
+      }
+
+      const numberOrDash = (v) => (Number.isFinite(v) ? v : '—');
 
       if (resp.ok) {
         setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
         showToast('LIVE rescan complete');
         await refreshHeaderLastScan();                // update header hint
-        await refreshScanAvailability();              // NEW: controls may become enabled
+        await refreshScanAvailability();              // controls may become enabled
       } else {
         const msg = body?.message || `LIVE rescan failed (${resp.status})`;
         setText(rescanMsg, msg);
@@ -217,7 +251,7 @@
 
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const numberOrDash = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : '—');
-    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    const started = (performance && performance.now) ? performance.now() : Date.now();
 
     try {
       const baseUrl = (window.occt && window.occt.api) ? window.occt.api('/rescan') : '/api/live/rescan';
@@ -236,32 +270,23 @@
         return;
       }
 
-      let ing  = body?.ingested ?? body?.inserted_total ?? null;
-      let tot  = body?.total_unique ?? body?.unique ?? body?.total ?? null;
-      let fail = body?.failed_unique ?? body?.failed ?? body?.failed_count ?? null;
+      // LIVE-only fields (no *_unique here)
+      const toNum = (v) => (v == null ? null : Number(v));
+      let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
+      let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
       let durMs = pickDurationMs(body); // may be null
 
+      // If a job exists, ALWAYS read job totals (LIVE-only, avoids SAMPLE contamination)
       const isLive = baseUrl.startsWith('/api/live');
-      if ((ing == null && tot == null && fail == null) && body?.job_id && isLive) {
-        const jobsBase = baseUrl.replace(/\/rescan(\?.*)?$/, '/jobs/');
-        const jobUrl = jobsBase + body.job_id + '?verbose=1';
-        const deadline = Date.now() + 20000;
-        let job = null;
-
-        do {
-          await sleep(600);
-          const jr = await fetch(jobUrl, { headers: { 'X-OCCT-No-Loader': '1' } });
-          job = await jr.json().catch(() => ({}));
-        } while (job && job.status && job.status !== 'done' && job.status !== 'error' && Date.now() < deadline);
-
-        ing  = job?.inserted_total ?? job?.ingested ?? ing;
-        tot  = job?.total_unique   ?? job?.unique   ?? job?.total ?? tot;
-        fail = job?.failed_unique  ?? job?.failed   ?? job?.failed_count ?? fail;
-        durMs = pickDurationMs(job) ?? durMs;
+      if (body?.job_id && isLive) {
+        const j = await pullLiveJobTotals(baseUrl, body.job_id);
+        if (j.ing  != null) ing  = j.ing;
+        if (j.fail != null) fail = j.fail;
+        if (j.dur  != null) durMs = j.dur;
       }
 
       if (!Number.isFinite(durMs)) {
-        durMs = (performance && performance.now) ? (performance.now() - t0) : (Date.now() - t0);
+        durMs = (performance && performance.now) ? (performance.now() - started) : (Date.now() - started);
       }
 
       setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);

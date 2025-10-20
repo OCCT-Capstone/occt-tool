@@ -103,6 +103,8 @@ def _insert_events(app, rows: List[Dict[str, Any]]) -> int:
                 db.session.add(evt)
                 inserted += 1
             except Exception as ex:
+                # keep your existing behaviour/logging style
+                from flask import current_app as app
                 app.logger.warning("Runner: skip bad row: %s", ex)
         db.session.commit()
     return inserted
@@ -257,10 +259,18 @@ class Runner:
         if col.get("replace_previous", False) and host:
             _delete_previous_for_host(self.app, host)
 
-        # Evaluate + insert
-        rows = evaluate_facts_document(facts_doc, _rules_path(self.app))
+        # Evaluate rows (NOT yet inserted)
+        rows = evaluate_facts_document(facts_doc, _rules_path(self.app)) or []
+
+        # --- NEW: compute this-run failures before insert (prevents any mixing) ---
+        try:
+            failed_new = sum(1 for r in rows if str(r.get("outcome", "")).lower() == "failed")
+        except Exception:
+            failed_new = 0
+
+        # Insert (force source='live')
         inserted = _insert_events(self.app, rows)
-        return {"ok": True, "inserted": inserted, "host": host}
+        return {"ok": True, "inserted": inserted, "failed_new": failed_new, "host": host}
 
 # ---------- API attachment ----------
 
@@ -300,30 +310,34 @@ def attach_live_runner_api(live_bp, app):
         t0 = time.time()
         hosts = []
         inserted_total = 0
+        failed_new_total = 0   # --- NEW: per-run failed sum ---
         while time.time() - t0 < 25:
             st = r.status(job_id) or {}
             if st.get("status") in ("done", "error"):
-                # summarize
+                # summarize this run only
                 for entry in (st.get("logs") or []):
                     for _, res in entry.items():
                         if res.get("ok"):
                             inserted_total += int(res.get("inserted") or 0)
+                            failed_new_total += int(res.get("failed_new") or 0)  # NEW
                             h = (res.get("host") or "").strip()
                             if h: hosts.append(h)
+                # You can still compute a post-replace summary if needed elsewhere:
                 summary = _summary_for_hosts(app, hosts or [])
                 total = summary["total"]
-                failed = summary["failed"]
+                # Build this-run payload; set failed/failed_count to this-run failures
                 return {
                     "ok": st.get("status") == "done",
                     "job_id": job_id,
                     "status": st.get("status"),
-                    # fields your toast can read:
-                    "ingested": inserted_total,
-                    "unique": total,                # total rows after replace
-                    "failed": failed,
-                    # also include verbose field names, just in case
+                    # used by UI:
+                    "ingested": inserted_total,      # rows inserted in THIS run (live)
+                    "failed_new": failed_new_total,  # failures from THIS run
+                    "failed": failed_new_total,      # legacy key showing this-run failures
+                    "unique": total,                 # total rows after replace (live)
+                    # aliases (back-compat)
                     "inserted_total": inserted_total,
-                    "failed_count": failed
+                    "failed_count": failed_new_total
                 }
             time.sleep(0.3)
 
@@ -336,18 +350,26 @@ def attach_live_runner_api(live_bp, app):
         st = r.status(job_id)
         if not st:
             return {"error": "not_found"}, 404
-        # short view + totals
+        # short view + totals for THIS run
         hosts = []
         inserted_total = 0
+        failed_new_total = 0  # --- NEW
         for entry in (st.get("logs") or []):
             for _, res in entry.items():
                 if res.get("ok"):
                     inserted_total += int(res.get("inserted") or 0)
+                    failed_new_total += int(res.get("failed_new") or 0)  # NEW
                     h = (res.get("host") or "").strip()
                     if h: hosts.append(h)
+        # we keep summary (live) in case other parts use it, but the UI will read this-run values
         summary = _summary_for_hosts(app, hosts or [])
         return {
             **st,
             "inserted_total": inserted_total,
-            "failed_count": summary["failed"],
+            # report THIS-RUN failures under all names your UI might read
+            "failed_new": failed_new_total,
+            "failed_count": failed_new_total,
+            "failed": failed_new_total,
+            # keep other fields intact (e.g., logs, status, etc.)
+            "unique": summary.get("total", 0),
         }
