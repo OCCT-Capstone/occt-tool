@@ -5,6 +5,8 @@ import threading
 import time
 from collections import deque
 from typing import Dict, Any, Iterable
+import os
+import sys
 
 # In-memory, REAL-TIME broadcaster (no DB replay, no 'id:' lines)
 
@@ -21,10 +23,14 @@ class _Client:
 _clients: set[_Client] = set()
 _clients_lock = threading.Lock()
 
+# Helpful identifiers to detect accidental duplicate module singletons
+_BUS_ID = id(sys.modules[__name__])
+_PID = os.getpid()
+
 def _iter_events(client: _Client):
     """Yield SSE forever for this client. Only items queued AFTER connect are sent."""
     # identify the implementation on connect
-    yield ": connected (occt-inmem-rt)\n\n"
+    yield f": connected (occt-inmem-rt)\n\n"
 
     KEEPALIVE_SEC = 15
     last_ping = time.time()
@@ -81,13 +87,20 @@ def publish_detection(payload: Dict[str, Any]) -> int:
             pass
     return sent
 
-# --------- DEBUG HELPERS (optional; used by /api/live/debug/*) ---------
+# --------- DEBUG HELPERS (used by /api/live/debug/*) ---------
 def _debug_state():
     with _clients_lock:
         return {
+            "bus_id": _BUS_ID,
+            "pid": _PID,
             "clients": len(_clients),
+            "clients_set_id": id(_clients),
         }
 
 def _debug_clear():
     # nothing buffered globally; return state
     return _debug_state()
+
+# --------- Single-bus alias to avoid accidental duplicate modules ----------
+# (Optional but safe: lets other modules import 'occt_sse_bus' and still get this singleton)
+sys.modules.setdefault("occt_sse_bus", sys.modules[__name__])

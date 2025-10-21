@@ -4,8 +4,11 @@ import threading
 import datetime as dt
 from collections import defaultdict
 from sqlalchemy.exc import IntegrityError
+
+# Use the single, canonical SSE bus everywhere
+import backend.notify as _bus
+
 from .models import db, SecurityEvent, Detection, EventBookmark
-from .notify import publish_detection  # <-- NEW
 
 # ---- instrumentation for clarity ----
 _POLL_STARTED = False
@@ -313,9 +316,9 @@ def _poll_once(app, event_ids, lookback_min, brute_thr, host, source):
             ins_alerts, new_alerts = upsert_detections(alerts, window_min=lookback_min, source=source, host=host)
 
             # publish only newly-inserted alerts to SSE
-            published = 0
+            sent_total = 0
             for a in new_alerts:
-                publish_detection({
+                sent_total += _bus.publish_detection({
                     "rule_id": a.get("rule_id"),
                     "summary": a.get("summary"),
                     "severity": a.get("severity") or "medium",
@@ -324,7 +327,6 @@ def _poll_once(app, event_ids, lookback_min, brute_thr, host, source):
                     "ip": a.get("ip"),
                     "when": a.get("when"),
                 })
-                published += 1
 
             max_rec = max([e.get("record_id") or 0 for e in evs] or [bm.last_record_id or 0])
             if max_rec > (bm.last_record_id or 0):
@@ -333,7 +335,19 @@ def _poll_once(app, event_ids, lookback_min, brute_thr, host, source):
                 db.session.add(bm)
 
             db.session.commit()
-            _log(app, f"[detections] +{ins_events} events, +{ins_alerts} alerts (published {published}), bookmark={bm.last_record_id}")
+
+            # single, consistent log line per poll with bus debug info
+            st = {}
+            try:
+                st = _bus._debug_state()
+            except Exception:
+                st = {}
+            _log(app, (
+                f"[detections] +{ins_events} events, +{ins_alerts} alerts "
+                f"(published {len(new_alerts)}; sent_to {sent_total} clients; "
+                f"clients_now={st.get('clients')} bus_id={st.get('bus_id')} pid={st.get('pid')}), "
+                f"bookmark={bm.last_record_id}"
+            ))
         except Exception as e:
             db.session.rollback()
             _log(app, f"[detections] error: {e}")
@@ -367,13 +381,6 @@ def start_live_poller_if_enabled(app):
     if not app.config.get("DETECTIONS_LIVE", True):
         _print("[detections] live poller disabled by config (DETECTIONS_LIVE=False)")
         return
-
-    def _is_admin():
-        try:
-            import ctypes
-            return bool(ctypes.windll.shell32.IsUserAnAdmin())
-        except Exception:
-            return False
 
     if not _is_admin():
         _print("[detections] live poller disabled: process not elevated. Run VS Code as Administrator or use scripts/run-admin.ps1")

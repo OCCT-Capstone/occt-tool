@@ -1,12 +1,12 @@
 # backend/api.py
-from flask import Blueprint, jsonify, request, current_app, make_response, render_template, Response, stream_with_context
+from flask import Blueprint, jsonify, request, current_app, make_response, render_template, Response
 from sqlalchemy import func, desc
 import os, json, time, datetime as dt
 import threading
 
 from .models import db, AuditEvent, Detection
 from .ingest_samples import project_root, ingest_audit
-from .notify import sse_stream, publish_detection, _debug_state, _debug_clear
+import backend.notify as _bus  # <— canonical import for the single SSE bus
 
 # --------- Blueprints ---------
 sample_bp = Blueprint("sample_api", __name__, url_prefix="/api/sample")  # DB-backed SAMPLE mode (auto-syncs from file)
@@ -471,7 +471,7 @@ def live_last_scan():
 @live_bp.get("/stream")
 def live_stream():
     """Server-Sent Events: stream detections to the UI in real time (no replay)."""
-    resp = Response(sse_stream(), mimetype="text/event-stream")
+    resp = Response(_bus.sse_stream(), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache, no-transform"
     resp.headers["Connection"] = "keep-alive"
     resp.headers["X-Accel-Buffering"] = "no"
@@ -490,14 +490,14 @@ def live_notify_test():
         "ip": "127.0.0.1",
         "when": now,
     }
-    n = publish_detection(sample)
+    n = _bus.publish_detection(sample)
     return _resp_json({"ok": True, "when": now, "id": None, "published_to_clients": n}, source_header="db-live")
 
 # --------- debug (optional) ---------
 @live_bp.get("/debug/notify-state")
 def live_notify_state():
-    return _resp_json(_debug_state(), source_header="db-live")
+    return _resp_json(_bus._debug_state(), source_header="db-live")
 
 @live_bp.post("/debug/notify-clear")
 def live_notify_clear():
-    return _resp_json(_debug_clear(), source_header="db-live")
+    return _resp_json(_bus._debug_clear(), source_header="db-live")
