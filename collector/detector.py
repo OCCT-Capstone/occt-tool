@@ -260,7 +260,7 @@ def chk_FAU_STG_1():
     """
     import re
 
-    # ---- safe defaults so except can never crash ----
+
     path = r"C:\Windows\System32\winevt\Logs\Security.evtx"
     allowed_write = {
         r"NT AUTHORITY\SYSTEM",
@@ -268,10 +268,10 @@ def chk_FAU_STG_1():
         r"LOCAL SERVICE",
         r"NT SERVICE\EVENTLOG",
     }
-    WRITE_TOKENS = {"F", "M", "W"}  # treat these as write-like
+    WRITE_TOKENS = {"F", "M", "W"}  
 
-    write_like = []     # [{principal, rights}]
-    offenders  = []     # subset of write_like not in allow-list
+    write_like = []     
+    offenders  = []     
     evidence   = {}
     passed     = False
 
@@ -294,7 +294,7 @@ def chk_FAU_STG_1():
             line = raw.strip()
             if not line or line.endswith(":"):
                 continue
-            # skip summary lines
+            
             lo = line.lower()
             if lo.startswith("processed ") or lo.startswith("failed processing"):
                 continue
@@ -304,7 +304,7 @@ def chk_FAU_STG_1():
             princ_raw, rest = line.split(":", 1)
             princ_norm = norm(princ_raw)
 
-            # Collect (...) groups; drop the inheritance flag "I"; keep only write-like tokens
+           
             tokens = re.findall(r"\(([^)]+)\)", rest)
             rights_no_I = [t for t in tokens if t and t.upper() != "I"]
             write_tokens = [t for t in rights_no_I if t.upper() in WRITE_TOKENS]
@@ -325,8 +325,8 @@ def chk_FAU_STG_1():
             "passed": passed,
             "evidence": {
                 **evidence,
-                "write_like": write_like,                # write-capable entries (I removed)
-                "offenders": offenders,                  # non-allowed writers
+                "write_like": write_like,                
+                "offenders": offenders,                  
                 "allowed_writers": sorted(list(allowed_write)),
             },
             "severity": "High",
@@ -360,7 +360,7 @@ def chk_FIA_SOS_1(min_len: int = 8, max_age_days: int = 365):
     Prefer 'secedit /export' -> secpol.cfg (UTF-16 LE), fall back to 'net accounts'.
     """
     try:
-        # Try Local Security Policy export
+        
         run(["secedit", "/export", "/cfg", "secpol.cfg"])
         text = open("secpol.cfg", encoding="utf-16-le", errors="ignore").read()
 
@@ -368,9 +368,9 @@ def chk_FIA_SOS_1(min_len: int = 8, max_age_days: int = 365):
             m = re.search(rf"^{re.escape(key)}\s*=\s*([^\r\n]+)", text, re.M)
             return cast(m.group(1).strip()) if m else None
 
-        complexity = g("PasswordComplexity", int)        # 0/1
+        complexity = g("PasswordComplexity", int)       
         minlen     = g("MinimumPasswordLength", int)
-        maxage     = g("MaximumPasswordAge", int)         # days
+        maxage     = g("MaximumPasswordAge", int)         
 
         passed = (
             (complexity == 1) and
@@ -393,15 +393,12 @@ def chk_FIA_SOS_1(min_len: int = 8, max_age_days: int = 365):
             "severity": "High"
         }
     except Exception:
-        # Fallback to 'net accounts'
+       
         try:
             out = run(["net", "accounts"])
-            # Examples:
-            #   Minimum password length (8)
-            #   Password complexity requirement: Enabled
-            #   Maximum password age (42 days)
+            
             m_min = re.search(r"Minimum\s+password\s+length\s*\(?(\d+)\)?", out, re.I)
-            m_age = re.search(r"Maximum\s+password\s+age\s*\(?(\d+)", out, re.I)  # first number = days
+            m_age = re.search(r"Maximum\s+password\s+age\s*\(?(\d+)", out, re.I)  
             m_cpx = re.search(r"(?:Password\s+complexity|complexity\s+requirement)\s*:\s*(Enabled|Disabled)", out, re.I)
 
             minlen = int(m_min.group(1)) if m_min else None
@@ -445,10 +442,10 @@ def chk_FAU_GEN_2():
         events = parse_events(xml)
 
         essentials = {"event_id", "time_created", "target_user"}
-        # validate first few events
+        
         ok = all(all(e.get(f) for f in essentials) for e in events[:5])
 
-        # show concise evidence
+        
         sample = []
         for e in events[:3]:
             sample.append({
@@ -487,21 +484,21 @@ def chk_FIA_UAU_1():
         ps = r"Get-LocalUser | Where-Object {$_.SID -match '-500$'} | Select-Object Name,Enabled"
         out = run(["powershell","-NoProfile","-Command", ps]).strip()
 
-        # Parse simple table output: lines like "Name Enabled"
+       
         name = None
         enabled = None
         for line in out.splitlines():
             line = line.strip()
             if not line or line.lower().startswith("name"):
                 continue
-            # split on whitespace; last token is Enabled
+            
             parts = line.split()
             if len(parts) >= 2:
                 enabled_str = parts[-1]
                 name = " ".join(parts[:-1])
                 enabled = (enabled_str.lower() == "true")
 
-        passed = (enabled is False)  # must be disabled
+        passed = (enabled is False) 
 
         return {
             "sfr": "FIA_UAU.1",
@@ -530,7 +527,7 @@ def chk_FIA_SOS_2(min_history: int = 5, min_age_days: int = 1):
     Prefer 'secedit /export' -> secpol.cfg (UTF-16 LE), then fallback to 'net accounts'.
     """
     try:
-        # Preferred: Local Security Policy export
+       
         run(["secedit", "/export", "/cfg", "secpol.cfg"])
         text = open("secpol.cfg", encoding="utf-16-le", errors="ignore").read()
 
@@ -538,8 +535,8 @@ def chk_FIA_SOS_2(min_history: int = 5, min_age_days: int = 1):
             m = re.search(rf"^{re.escape(key)}\s*=\s*([^\r\n]+)", text, re.M)
             return cast(m.group(1).strip()) if m else None
 
-        hist = g("PasswordHistorySize", int)          # count
-        minage = g("MinimumPasswordAge", int)         # days
+        hist = g("PasswordHistorySize", int)         
+        minage = g("MinimumPasswordAge", int)         
 
         passed = (
             (hist is not None and hist >= min_history) and
@@ -560,12 +557,10 @@ def chk_FIA_SOS_2(min_history: int = 5, min_age_days: int = 1):
             "severity": "High"
         }
     except Exception:
-        # Fallback: 'net accounts'
+       
         try:
             out = run(["net", "accounts"])
-            # Examples seen in 'net accounts' output:
-            #   Minimum password age (1 days)
-            #   Password history length (24)
+            
             m_hist = re.search(r"Password\s+history\s+length\s*\(?(\d+)\)?", out, re.I)
             m_age  = re.search(r"Minimum\s+password\s+age\s*\(?(\d+)", out, re.I)
 
@@ -654,7 +649,7 @@ def chk_FIA_AFL_2(min_duration_min: int = 15, max_reset_min: int = 15):
     Prefer 'secedit /export' -> secpol.cfg; fallback to 'net accounts'.
     """
     try:
-        # Preferred: Local Security Policy export
+        
         run(["secedit", "/export", "/cfg", "secpol.cfg"])
         text = open("secpol.cfg", encoding="utf-16-le", errors="ignore").read()
 
@@ -662,8 +657,8 @@ def chk_FIA_AFL_2(min_duration_min: int = 15, max_reset_min: int = 15):
             m = re.search(rf"^{re.escape(key)}\s*=\s*([^\r\n]+)", text, re.M)
             return int(m.group(1).strip()) if m else None
 
-        duration = grab("LockoutDuration")        # minutes
-        reset    = grab("ResetLockoutCount")      # minutes
+        duration = grab("LockoutDuration")       
+        reset    = grab("ResetLockoutCount")      
 
         passed = (
             (duration is not None and duration >= min_duration_min) and
@@ -684,12 +679,10 @@ def chk_FIA_AFL_2(min_duration_min: int = 15, max_reset_min: int = 15):
             "severity": "High"
         }
     except Exception:
-        # Fallback: 'net accounts'
+        
         try:
             out = run(["net", "accounts"])
-            # Example lines:
-            #   Lockout duration               (30 minutes)
-            #   Reset account lockout counter after (15 minutes)
+           
             m_dur   = re.search(r"Lockout\s+duration\s*\(?(\d+)", out, re.I)
             m_reset = re.search(r"Reset\s+account\s+lockout\s+counter\s+after\s*\(?(\d+)", out, re.I)
 
@@ -747,35 +740,35 @@ def parse_events(xml):
         if "<Event " not in block:
             continue
 
-        # Core fields
+      
         eid = find(r"<EventID>(\d+)</EventID>", block)
         ts  = find(r'TimeCreated\s+SystemTime="([^"]+)"', block)
 
-        # Pull <RenderingInfo> and unescape the inner text
+  
         m_msg = re.search(r"<RenderingInfo[^>]*>(.*?)</RenderingInfo>", block, re.I | re.S)
         msg_raw = m_msg.group(1) if m_msg else ""
-        msg_text = re.sub(r"<[^>]+>", "", msg_raw)         # strip any tags inside RenderingInfo
-        msg_text = html.unescape(msg_text)                 # turn &#13; etc. into real chars
+        msg_text = re.sub(r"<[^>]+>", "", msg_raw)         
+        msg_text = html.unescape(msg_text)                 
         msg_text = re.sub(r"[\r\n]+", " ", msg_text).strip()
 
-        # Structured fields (preferred)
+      
         t_user = find(r'<Data Name="TargetUserName">([^<]*)</Data>', block)
         s_user = find(r'<Data Name="SubjectUserName">([^<]*)</Data>', block)
         ip     = find(r'<Data Name="IpAddress">([^<]*)</Data>', block)
 
-        # Fallbacks from the human message if needed
+        
         if not t_user:
             t_user = find(r"Account Name:\s*([^\s\r\n]+)", msg_text)
         if not ip:
             ip = "N/A"
 
-        # Finalize
+        
         events.append({
             "event_id": int(eid) if eid else None,
             "time_created": ts or None,
             "target_user": t_user or (s_user or "UNKNOWN"),
             "ip": ip,
-            # keep message short for evidence (comment out if you don’t need it)
+            
             "message": msg_text[:300] + ("…" if len(msg_text) > 300 else "")
         })
 
