@@ -4,7 +4,7 @@ from flask import (
 )
 from functools import wraps
 from sqlalchemy import func
-from .db_util import ensure_c1_columns, ensure_unique_index, ensure_event_tables
+from .db_util import ensure_c1_columns, ensure_unique_index  # NOTE: no ensure_event_tables here
 from .live_facts import attach_live_facts, attach_live_compliance, attach_live_rules_api
 from .live_runner import attach_live_runner_api
 from .detections_api import attach_detections_api
@@ -21,6 +21,7 @@ DETECTIONS_EVENT_IDS = [4625, 4728, 4732, 4624]
 DETECTIONS_LOOKBACK_MIN = 5     # minutes
 DETECTIONS_INTERVAL = 15        # seconds
 BRUTE_4625_THRESHOLD = 5
+DETECTIONS_DEDUPE_SEC = 0       # seconds; 0 = no de-dupe (alerts fire immediately)
 """
 
 def ensure_instance_settings_file(app):
@@ -28,6 +29,7 @@ def ensure_instance_settings_file(app):
     path = os.path.join(app.instance_path, "settings.py")
     if not os.path.exists(path):
         try:
+            os.makedirs(app.instance_path, exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_SETTINGS)
             print(f"[bootstrap] wrote default {path}")
@@ -42,15 +44,24 @@ def apply_default_config(app):
         DETECTIONS_LOOKBACK_MIN=5,
         DETECTIONS_INTERVAL=15,
         BRUTE_4625_THRESHOLD=5,
+        DETECTIONS_DEDUPE_SEC=0,
     )
     # Optional: allow env overrides if provided
     def env_int(name, default):
         v = os.getenv(name)
-        return int(v) if (v and v.isdigit()) else default
+        try:
+            return int(v) if v is not None else default
+        except Exception:
+            return default
     def env_csv_int(name, default_list):
         v = os.getenv(name)
         if not v: return default_list
-        return [int(x) for x in v.split(",") if x.strip().isdigit()]
+        out = []
+        for x in v.split(","):
+            x = x.strip()
+            if x.isdigit():
+                out.append(int(x))
+        return out or default_list
 
     if "OCCT_DETECTIONS_LIVE" in os.environ:
         app.config["DETECTIONS_LIVE"] = (os.getenv("OCCT_DETECTIONS_LIVE") == "1")
@@ -58,6 +69,7 @@ def apply_default_config(app):
     app.config["DETECTIONS_INTERVAL"]     = env_int("OCCT_DETECTIONS_INTERVAL",     app.config["DETECTIONS_INTERVAL"])
     app.config["DETECTIONS_LOOKBACK_MIN"] = env_int("OCCT_DETECTIONS_LOOKBACK_MIN", app.config["DETECTIONS_LOOKBACK_MIN"])
     app.config["DETECTIONS_EVENT_IDS"]    = env_csv_int("OCCT_DETECTIONS_EVENT_IDS", app.config["DETECTIONS_EVENT_IDS"])
+    app.config["DETECTIONS_DEDUPE_SEC"]   = env_int("OCCT_DETECTIONS_DEDUPE_SEC",   app.config["DETECTIONS_DEDUPE_SEC"])
 
 # ---------------------------------- Flask app ---------------------------------
 
@@ -92,7 +104,16 @@ with app.app_context():
     db.create_all()
     ensure_c1_columns()
     ensure_unique_index()
-    # ensure_event_tables()  # call if you need to create extra detections tables
+    # Leave ensure_event_tables() out to avoid quoting issues on reserved names like "when".
+    # Apply safe PRAGMAs for better concurrency.
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as con:
+            con.execute(text('PRAGMA journal_mode=WAL'))
+            con.execute(text('PRAGMA synchronous=NORMAL'))
+            con.execute(text('PRAGMA busy_timeout=5000'))
+    except Exception as e:
+        print(f'[sqlite] pragma set failed: {e}')
 
 # Blueprints + APIs
 from .api import api_bp, sample_bp, live_bp
@@ -124,7 +145,8 @@ def login_required(view):
 @app.get("/login")
 def login_page():
     if session.get("user"):
-        return redirect(url_for("index"))
+        # keep original redirect target for compatibility
+        return redirect(url_for("index")) if "index" in app.view_functions else redirect(url_for("home_page"))
     return render_template("login.html")
 
 @app.post("/auth/login")
@@ -205,7 +227,6 @@ def healthz():
     return {"ok": True}
 
 # -------------------------------- Entry point ---------------------------------
-# ... keep all your imports and setup above unchanged ...
 
 if __name__ == "__main__":
     import sys, subprocess, os
@@ -221,6 +242,5 @@ if __name__ == "__main__":
         print(f"[auto-ingest] failed: {e}")
 
     # IMPORTANT: threaded=True so SSE doesn't block other requests.
-    # You can also tweak threads via OCCT_THREADS env var in production servers like waitress or gunicorn.
-    app.run(debug=True, threaded=True, port=5000)
-
+    # Keep your existing behaviour; if you want to avoid dual-PID logs, add use_reloader=False.
+    app.run(debug=True, threaded=True, port=5000, use_reloader=False)

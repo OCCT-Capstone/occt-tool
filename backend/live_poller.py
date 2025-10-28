@@ -133,6 +133,9 @@ def parse_events(xml: str):
         ip = _cap(r"Source Network Address:\s*([^\s]+)", msg_full) or None
         ip = _norm_ip(ip)
 
+        # Optional: stash group name if present in <Data>, helps 4728/4732
+        group_name = data.get("GroupName") or data.get("TargetUserName") or None
+
         events.append({
             "record_id": int(record) if record else None,
             "time": to_dt_utc(ts),
@@ -142,6 +145,7 @@ def parse_events(xml: str):
             "level": level,
             "account": account or None,
             "target":  account or None,
+            "group": group_name or None,
             "ip": ip,
             "message": msg_full,
         })
@@ -188,24 +192,25 @@ def json_dumps(x):
     except Exception:
         return "{}"
 
-def upsert_detections(alerts, window_min, source="live", host=""):
-    """
-    Insert detections if not seen in the sliding window; return (inserted_count, newly_inserted_alerts).
-    Newly inserted alerts are in the same shape as the incoming 'alerts'.
+def upsert_detections(alerts, dedupe_sec: int, source="live", host=""):
+    """Insert detections unless an identical one was seen within the last dedupe_sec seconds.
+    Returns (inserted_count, newly_inserted_alerts). If dedupe_sec == 0, never de-dupe.
     """
     inserted = 0
     now = dt.datetime.now(dt.timezone.utc)
-    window = dt.timedelta(minutes=max(window_min, 5))
+    window = dt.timedelta(seconds=max(int(dedupe_sec or 0), 0))
     new_alerts = []
 
     for a in alerts:
         when_dt = to_dt_utc(a.get("when")) or now
-        exists = Detection.query.filter(
-            Detection.source == source,
-            Detection.rule_id == a.get("rule_id"),
-            Detection.summary == a.get("summary"),
-            Detection.when >= (now - window),
-        ).first()
+        exists = None
+        if window.total_seconds() > 0:
+            exists = Detection.query.filter(
+                Detection.source == source,
+                Detection.rule_id == a.get("rule_id"),
+                Detection.summary == a.get("summary"),
+                Detection.when >= (now - window),
+            ).first()
         if exists:
             continue
 
@@ -270,8 +275,8 @@ def detect_admin_group_add(events, window_min):
             continue
         msg = e.get("message") or ""
 
-        grp = _cap(r"Group Name:\s*(.*?)\s*(?=Group Domain:|Additional Information:|$)", msg)
-        mem = _cap(r"Member:.*?Account Name:\s*(.*?)\s*(?=Group:|Group Name:|Group Domain:|Additional Information:|$)", msg)
+        grp = _cap(r"Group Name:\s*(.*?)\s*(?=Group Domain:|Additional Information:|$)", msg) or (e.get("group") or None)
+        mem = _cap(r"Member:.*?Account Name:\s*(.*?)\s*(?=Group:|Group Name:|Group Domain:|Additional Information:|$)", msg) or (e.get("account") or e.get("target") or None)
         g = (grp or "").strip() or "UNKNOWN"
         m = (mem or (e.get("target") or "UNKNOWN")).strip()
 
@@ -313,7 +318,8 @@ def _poll_once(app, event_ids, lookback_min, brute_thr, host, source):
                         safe_a1.append(a)
                 alerts = safe_a1 + a2
 
-            ins_alerts, new_alerts = upsert_detections(alerts, window_min=lookback_min, source=source, host=host)
+            dedupe_sec = int(app.config.get('DETECTIONS_DEDUPE_SEC', 0) or 0)
+            ins_alerts, new_alerts = upsert_detections(alerts, dedupe_sec=dedupe_sec, source=source, host=host)
 
             # publish only newly-inserted alerts to SSE
             sent_total = 0
@@ -355,7 +361,7 @@ def _poll_once(app, event_ids, lookback_min, brute_thr, host, source):
             db.session.remove()
 
 def _loop(app, event_ids, interval_sec, lookback_min, brute_thr, host, source):
-    _log(app, f"[detections] live poller started (ids={tuple(event_ids)}, every {interval_sec}s, lookback={lookback_min}m)")
+    _log(app, f"[detections] live poller started (ids={tuple(event_ids)}, every {interval_sec}s, lookback={lookback_min}m, dedupe={int(app.config.get('DETECTIONS_DEDUPE_SEC',0) or 0)}s)")
     while True:
         _poll_once(app, event_ids, lookback_min, brute_thr, host, source)
         time.sleep(max(5, interval_sec))

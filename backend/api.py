@@ -606,10 +606,13 @@ def live_weighted_compliance():
 @live_bp.get("/stream")
 def live_stream():
     """Server-Sent Events: stream detections to the UI in real time (no replay)."""
+    import os
+    pid = os.getpid()
     resp = Response(_bus.sse_stream(), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache, no-transform"
     resp.headers["Connection"] = "keep-alive"
     resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["X-OCCT-PID"] = str(pid)
     return resp
 
 # --------- (Optional) test endpoint to emit a demo detection ---------
