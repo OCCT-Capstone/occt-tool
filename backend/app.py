@@ -205,8 +205,10 @@ def healthz():
     return {"ok": True}
 
 # -------------------------------- Entry point ---------------------------------
+# ... keep all your imports and setup above unchanged ...
+
 if __name__ == "__main__":
-    import sys, subprocess
+    import sys, subprocess, os
 
     # Run samples ingest ONCE before starting server
     try:
@@ -218,4 +220,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[auto-ingest] failed: {e}")
 
-    app.run(debug=True, port=5000)
+    # IMPORTANT: threaded=True so SSE doesn't block other requests.
+    # You can also tweak threads via OCCT_THREADS env var in production servers like waitress or gunicorn.
+    app.run(debug=True, threaded=True, port=5000)
+

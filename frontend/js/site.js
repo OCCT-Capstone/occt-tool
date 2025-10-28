@@ -3,8 +3,12 @@
 (function (w, d) {
   const K = { THEME:'occt.theme', MODE:'occt.apiMode' };
 
-  const get = (k, def) => localStorage.getItem(k) ?? def;
-  const set = (k, v)   => localStorage.setItem(k, v);
+  const get = (k, def) => {
+    try { return localStorage.getItem(k) ?? def; } catch { return def; }
+  };
+  const set = (k, v) => {
+    try { localStorage.setItem(k, v); } catch {}
+  };
 
   // Apply theme ASAP (prevents flash)
   function applyThemeEarly() {
@@ -14,7 +18,8 @@
   // Build API path depending on mode
   // live -> /api/live, sample -> /api/sample
   function api(path) {
-    const mode = get(K.M0DE ?? K.MODE, get(K.MODE, 'sample')); // tolerate older key typo if any
+    // tolerate older key typo if any (M0DE)
+    const mode = get('occt.apiMode') ?? get('occt.aPiMode') ?? get('occt.M0DE') ?? get('occt.mode') ?? get(K.MODE, 'sample');
     return mode === 'live' ? `/api/live${path}` : `/api/sample${path}`;
   }
 
@@ -22,28 +27,44 @@
   const AU_TZ = 'Australia/Sydney';
   function formatDateTimeAU(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleString('en-AU', {
-      timeZone: AU_TZ,
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: false
-    }).replace(',', '');
+    const dte = new Date(iso);
+    try {
+      return dte.toLocaleString('en-AU', {
+        timeZone: AU_TZ,
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).replace(',', '');
+    } catch {
+      // Fallback if TZ not supported
+      const pad = (n)=> (n<10?'0'+n:n);
+      return `${dte.getFullYear()}-${pad(dte.getMonth()+1)}-${pad(dte.getDate())} ${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
+    }
   }
   function formatDateAU(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-AU', {
-      timeZone: AU_TZ,
-      day: '2-digit', month: '2-digit', year: 'numeric'
-    });
+    const dte = new Date(iso);
+    try {
+      return dte.toLocaleDateString('en-AU', {
+        timeZone: AU_TZ,
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+    } catch {
+      const pad = (n)=> (n<10?'0'+n:n);
+      return `${pad(dte.getDate())}/${pad(dte.getMonth()+1)}/${dte.getFullYear()}`;
+    }
   }
   function formatTimeAU(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString('en-AU', {
-      timeZone: AU_TZ,
-      hour: '2-digit', minute: '2-digit', hour12: false
-    });
+    const dte = new Date(iso);
+    try {
+      return dte.toLocaleTimeString('en-AU', {
+        timeZone: AU_TZ,
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+    } catch {
+      const pad = (n)=> (n<10?'0'+n:n);
+      return `${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
+    }
   }
 
   // ====== Toast UI (site-wide) ======
@@ -101,6 +122,20 @@
     setTimeout(() => el.remove(), 8000);                      // remove at 8s
   }
 
+  // ====== SSE gating ======
+  function pageWantsSSE() {
+    // Opt-in/out via meta if present
+    const meta = d.querySelector('meta[name="occt-sse"]');
+    if (meta) {
+      const v = (meta.getAttribute('content') || '').toLowerCase().trim();
+      if (['on','true','1','yes'].includes(v))  return true;
+      if (['off','false','0','no'].includes(v)) return false;
+    }
+    // Default: only the detections page needs live stream
+    const p = (location.pathname || '').toLowerCase();
+    return p.endsWith('/detections') || p.endsWith('/detections/');
+  }
+
   // ====== Live SSE hookup (single instance, fresh-only) ======
   function initSSE() {
     if (w.__occtSSEInit) return;               // single initializer
@@ -108,6 +143,7 @@
 
     const mode = get(K.MODE, 'sample');
     if (mode !== 'live') return;               // only listen when in LIVE mode
+    if (!pageWantsSSE()) return;               // gated by page/meta
 
     const url = api('/stream');                // /api/live/stream
     let es;
@@ -118,7 +154,10 @@
       return;
     }
 
-    const connectedAt = Date.now();            // drop anything older than page load
+    // Store handle globally so we can close it on navigation
+    w.__occtSSE = { es, startedAt: Date.now() };
+
+    const connectedAt = w.__occtSSE.startedAt; // drop anything older than page load
     const seen = new Set();                    // optional dedupe if ids show up later
 
     es.addEventListener('open', () => {
@@ -167,6 +206,12 @@
         console.warn('Bad detection payload', e);
       }
     });
+
+    // IMPORTANT: close the stream immediately when navigating away
+    // to free the request worker (prevents random page stalls on dev server).
+    w.addEventListener('beforeunload', () => {
+      try { w.__occtSSE?.es?.close(); } catch {}
+    }, { once: true });
   }
 
   // expose minimal API (keep a compatibility alias)
