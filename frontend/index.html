@@ -17,16 +17,15 @@
 </head>
 
 <body class="dash-body">
-
-  <!-- ========== Top Navigation ========== -->
+  <!-- NAVBAR -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks center">
       <li><a href="/home">Home</a></li>
-      <li class="active"><a href="/index">Dashboard</a></li>
+      <li class="active"><a href="/index" data-live-only>Dashboard</a></li>
       <li><a href="/detections" data-live-only>Detections</a></li>
-      <li><a href="/audit">Audit</a></li>
-      <li><a href="/remediation">Remediation</a></li>
+      <li><a href="/audit" data-live-only>Audit</a></li>
+      <li><a href="/remediation" data-live-only>Remediation</a></li>
       <li><a href="/settings">Settings</a></li>
     </ul>
     <div class="nav-right">
@@ -36,7 +35,6 @@
     </div>
   </nav>
 
-  <!-- ========== Main Content ========== -->
   <main class="container">
 
     <!-- ===== KPI Row (3 cards) ===== -->
@@ -84,15 +82,15 @@
         </div>
       </div>
 
-      <!-- Account Activity (numeric KPIs) -->
+      <!-- Weighted Compliance (donut) -->
       <div class="card">
-        <h3>Account Activity</h3>
-        <div class="kpi-big" id="kpiIssues">—</div>
-        <div class="kpi-row">
-          <span class="muted">Issues Detected</span><span id="kpiIssuesDetail">—</span>
-        </div>
-        <div class="kpi-row">
-          <span class="muted">Accounts</span><span id="kpiAccounts">—</span>
+        <h3>Weighted Compliance Score</h3>
+        <div class="donut-wrap">
+          <canvas id="weightedComplianceChart" width="180" height="180" aria-label="Weighted compliance donut"></canvas>
+          <div class="donut-center">
+            <div class="donut-number" id="wcPercent">—</div>
+            <div class="donut-sub">/100</div>
+          </div>
         </div>
       </div>
     </section>
@@ -135,6 +133,8 @@
   <script defer src="{{ url_for('static', filename='js/index.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/lastscan-header.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/dashboard-alert.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script defer src="{{ url_for('static', filename='js/weighted-compliance.js') }}"></script>
 
 </body>
 </html>

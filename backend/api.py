@@ -1,7 +1,7 @@
 # backend/api.py
 from flask import Blueprint, jsonify, request, current_app, make_response, render_template, Response
 from sqlalchemy import func, desc
-import os, json, time, datetime as dt
+import os, json, time, datetime as dt, yaml
 import threading
 
 from .models import db, AuditEvent, Detection
@@ -294,6 +294,122 @@ def _build_audit_list_from_unique():
         })
     return out
 
+# ===================== WEIGHTED COMPLIANCE =====================
+
+def _candidate_controls_paths():
+    here = os.path.dirname(__file__)
+    roots = [
+        os.path.join(here, "rules", "controls.yml"),
+        os.path.join(here, "controls.yml"),
+        os.path.join(project_root(), "backend", "rules", "controls.yml"),
+        os.path.join(project_root(), "rules", "controls.yml"),
+        os.path.join(project_root(), "config", "controls.yml"),
+        os.path.join(project_root(), "controls.yml"),
+    ]
+    # First existing path wins
+    return [p for p in roots if os.path.exists(p)]
+
+def _rules_severity_index():
+    """
+    Return {<id or title lower>: 'low'|'medium'|'high'|'critical'} from controls.yml.
+    Works with list or dict YAML layouts. Falls back to 'low' if unknown.
+    """
+    index = {}
+    # Try importing live_rules (optional)
+    try:
+        from .live_rules import load_rules
+        for p in _candidate_controls_paths():
+            try:
+                rules = load_rules(p) or []
+                for r in rules:
+                    sev = (r.get("severity") or r.get("risk") or "low").lower()
+                    key_id = (r.get("id") or "").strip().lower()
+                    key_title = (r.get("title") or r.get("control") or "").strip().lower()
+                    if key_id:
+                        index[key_id] = sev
+                    if key_title:
+                        index[key_title] = sev
+                if index:
+                    return index
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # Fallback: direct YAML read
+    for p in _candidate_controls_paths():
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if isinstance(v, dict):
+                        sev = (v.get("severity") or v.get("risk") or "low").lower()
+                        index[(k or "").strip().lower()] = sev
+                        title = (v.get("title") or v.get("control") or "").strip().lower()
+                        if title:
+                            index[title] = sev
+            elif isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        sev = (item.get("severity") or item.get("risk") or "low").lower()
+                        key_id = (item.get("id") or "").strip().lower()
+                        key_title = (item.get("title") or item.get("control") or "").strip().lower()
+                        if key_id:
+                            index[key_id] = sev
+                        if key_title:
+                            index[key_title] = sev
+            if index:
+                return index
+        except Exception:
+            continue
+    return index  # may be empty
+
+def _compute_weighted_compliance():
+    """
+    Risk-weighted compliance:
+      - Each PASS contributes 1 unit.
+      - Each FAIL contributes severity-weight units (low=1, med=2, high=3, critical=4).
+    Score = 100 * P / (P + weighted_fail_units)
+    """
+    weights = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+    # Build severity index from controls.yml (id/title -> severity), fallback 'low'
+    sev_index = _rules_severity_index()
+
+    uq = _unique_rows_query().subquery()
+    rows = db.session.query(uq.c.control, uq.c.outcome).all()
+
+    pass_units = 0                      # 1 per pass
+    fail_units = {"low": 0, "medium": 0, "high": 0, "critical": 0}  # weighted by severity
+
+    for control, outcome in rows:
+        key = (control or "").strip().lower()
+        sev = sev_index.get(key, "low")
+        w = weights.get(sev, 1)
+
+        if (outcome or "").lower() == "failed":
+            fail_units[sev] = fail_units.get(sev, 0) + w  # severity-weighted
+        else:
+            pass_units += 1                               # unweighted pass
+
+    denom = pass_units + sum(fail_units.values())
+    score = round((pass_units / denom) * 100) if denom else 0
+
+    return {
+        "score": score,
+        "points": {
+            # Keep names the JS expects:
+            "total": denom,
+            "pass": pass_units,                    # unweighted passes
+            "fail_low": fail_units["low"],
+            "fail_medium": fail_units["medium"],
+            "fail_high": fail_units["high"],
+            "fail_critical": fail_units["critical"],
+        }
+    }
+
+
 # --------- SAMPLE endpoints (/api/sample/*) ---------
 @sample_bp.get("/dashboard")
 def sample_dashboard():
@@ -337,59 +453,6 @@ def sample_report():
     resp.headers["Content-Type"] = "text/html; charset=utf-8"
     return resp
 
-# --------- /api/* alias (same as sample so UI keeps working) ---------
-@api_bp.get("/dashboard")
-def alias_dashboard():
-    _ensure_samples_synced()
-    payload = _build_dashboard_json_with_optional_override()
-    dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
-    return _resp_json(payload, source_header="db-sample", dashboard_source=dash_src)
-
-@api_bp.get("/audit")
-def alias_audit():
-    _ensure_samples_synced()
-    rows = _build_audit_list_from_unique()
-    return _resp_json(rows, source_header="db-sample")
-
-@api_bp.post("/rescan")
-def alias_rescan():
-    return sample_rescan()
-
-@api_bp.get("/report")
-def alias_report():
-    return sample_report()
-
-# --------- LIVE endpoints (/api/live/*) ---------
-@live_bp.get("/dashboard")
-def live_dashboard():
-    payload = _build_dashboard_json_with_optional_override()
-    dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
-    return _resp_json(payload, source_header="db-live", dashboard_source=dash_src)
-
-@live_bp.get("/audit")
-def live_audit():
-    rows = _build_audit_list_from_unique()
-    return _resp_json(rows, source_header="db-live")
-
-@live_bp.get("/report")
-def live_report():
-    dash = _build_dashboard_json_with_optional_override()
-    rem  = _build_remediation_overview()
-    html = render_template(
-        "report.html",
-        dashboard=dash,
-        remediation=rem,
-        generated_at=dt.datetime.utcnow(),
-        mode="live"
-    )
-    resp = make_response(html, 200)
-    if request.args.get("download") == "1":
-        fname = f"occt-report-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.html"
-        resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
-    resp.headers["Content-Type"] = "text/html; charset=utf-8"
-    return resp
-
-# --------- LAST SCAN endpoints (sample & live) ---------
 @sample_bp.get("/last-scan")
 def sample_last_scan():
     _ensure_samples_synced()
@@ -441,6 +504,72 @@ def sample_last_scan():
         "host_count": int(len(host_set))
     }, source_header="db-sample")
 
+# ---- Weighted compliance (sample) ----
+@sample_bp.get("/weighted-compliance")
+def sample_weighted_compliance():
+    _ensure_samples_synced()
+    payload = _compute_weighted_compliance()
+    return _resp_json(payload, source_header="db-sample")
+
+# --------- /api/* alias (same as sample so UI keeps working) ---------
+@api_bp.get("/dashboard")
+def alias_dashboard():
+    _ensure_samples_synced()
+    payload = _build_dashboard_json_with_optional_override()
+    dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
+    return _resp_json(payload, source_header="db-sample", dashboard_source=dash_src)
+
+@api_bp.get("/audit")
+def alias_audit():
+    _ensure_samples_synced()
+    rows = _build_audit_list_from_unique()
+    return _resp_json(rows, source_header="db-sample")
+
+@api_bp.post("/rescan")
+def alias_rescan():
+    return sample_rescan()
+
+@api_bp.get("/report")
+def alias_report():
+    return sample_report()
+
+# ---- Weighted compliance (alias) ----
+@api_bp.get("/weighted-compliance")
+def alias_weighted_compliance():
+    _ensure_samples_synced()
+    payload = _compute_weighted_compliance()
+    return _resp_json(payload, source_header="db-sample")
+
+# --------- LIVE endpoints (/api/live/*) ---------
+@live_bp.get("/dashboard")
+def live_dashboard():
+    payload = _build_dashboard_json_with_optional_override()
+    dash_src = "file-dashboard" if payload.get("_note_monthly") else "db"
+    return _resp_json(payload, source_header="db-live", dashboard_source=dash_src)
+
+@live_bp.get("/audit")
+def live_audit():
+    rows = _build_audit_list_from_unique()
+    return _resp_json(rows, source_header="db-live")
+
+@live_bp.get("/report")
+def live_report():
+    dash = _build_dashboard_json_with_optional_override()
+    rem  = _build_remediation_overview()
+    html = render_template(
+        "report.html",
+        dashboard=dash,
+        remediation=rem,
+        generated_at=dt.datetime.utcnow(),
+        mode="live"
+    )
+    resp = make_response(html, 200)
+    if request.args.get("download") == "1":
+        fname = f"occt-report-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.html"
+        resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
+
 @live_bp.get("/last-scan")
 def live_last_scan():
     # Most recent minute bucket for live
@@ -466,6 +595,12 @@ def live_last_scan():
         "failed_count": sum(1 for r in rows if (r.outcome or "").lower() == "failed"),
         "host_count": len({(r.host or "").strip() for r in rows if (r.host or "").strip()}),
     }, source_header="db-live")
+
+# ---- Weighted compliance (live) ----
+@live_bp.get("/weighted-compliance")
+def live_weighted_compliance():
+    payload = _compute_weighted_compliance()
+    return _resp_json(payload, source_header="db-live")
 
 # --------- REAL-TIME SSE stream (LIVE) ---------
 @live_bp.get("/stream")
