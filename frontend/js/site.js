@@ -1,7 +1,7 @@
 // frontend/js/site.js
 // Small global helper used by all pages.
 (function (w, d) {
-  const K = { THEME:'occt.theme', MODE:'occt.apiMode' };
+  const K = { THEME:'occt.theme', MODE:'occt.apiMode', M0DE:'occt.apiM0de' }; // include legacy key
 
   const get = (k, def) => {
     try { return localStorage.getItem(k) ?? def; } catch { return def; }
@@ -9,6 +9,25 @@
   const set = (k, v) => {
     try { localStorage.setItem(k, v); } catch {}
   };
+
+  // --- one-time migration: copy legacy key -> new key if present ---
+  (function migrateModeKey(){
+    try {
+      const oldV = localStorage.getItem(K.M0DE);
+      const curV = localStorage.getItem(K.MODE);
+      if (oldV && !curV) localStorage.setItem(K.MODE, oldV);
+    } catch {}
+  })();
+
+  // Centralized mode reader (tolerates legacy/odd keys)
+  function getApiModeValue() {
+    const keys = [K.MODE, K.M0DE, 'occt.mode', 'occt.aPiMode']; // prefer correct, then legacy/odd
+    for (const k of keys) {
+      const v = get(k, null);
+      if (typeof v === 'string' && v) return v.toLowerCase();
+    }
+    return 'live'; // sane default
+  }
 
   // Apply theme ASAP (prevents flash)
   function applyThemeEarly() {
@@ -18,9 +37,7 @@
   // Build API path depending on mode
   // live -> /api/live, sample -> /api/sample
   function api(path) {
-    // tolerate older key typo if any (M0DE)
-    const mode = get('occt.apiMode') ?? get('occt.aPiMode') ?? get('occt.M0DE') ?? get('occt.mode') ?? get(K.MODE, 'sample');
-    return mode === 'live' ? `/api/live${path}` : `/api/sample${path}`;
+    return getApiModeValue() === 'live' ? `/api/live${path}` : `/api/sample${path}`;
   }
 
   // ---- AU Date/Time helpers (AEST/AEDT) ----
@@ -35,7 +52,6 @@
         hour: '2-digit', minute: '2-digit', hour12: false
       }).replace(',', '');
     } catch {
-      // Fallback if TZ not supported
       const pad = (n)=> (n<10?'0'+n:n);
       return `${dte.getFullYear()}-${pad(dte.getMonth()+1)}-${pad(dte.getDate())} ${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
     }
@@ -124,16 +140,14 @@
 
   // ====== SSE gating ======
   function pageWantsSSE() {
-    // Opt-in/out via meta if present
+    // Default: ON for all pages. Allow opt-out via meta.
     const meta = d.querySelector('meta[name="occt-sse"]');
     if (meta) {
       const v = (meta.getAttribute('content') || '').toLowerCase().trim();
-      if (['on','true','1','yes'].includes(v))  return true;
       if (['off','false','0','no'].includes(v)) return false;
+      if (['on','true','1','yes'].includes(v))  return true;
     }
-    // Default: only the detections page needs live stream
-    const p = (location.pathname || '').toLowerCase();
-    return p.endsWith('/detections') || p.endsWith('/detections/');
+    return true; // SSE enabled everywhere unless explicitly disabled
   }
 
   // ====== Live SSE hookup (single instance, fresh-only) ======
@@ -141,9 +155,9 @@
     if (w.__occtSSEInit) return;               // single initializer
     w.__occtSSEInit = true;
 
-    const mode = get(K.MODE, 'sample');
+    const mode = getApiModeValue();
     if (mode !== 'live') return;               // only listen when in LIVE mode
-    if (!pageWantsSSE()) return;               // gated by page/meta
+    if (!pageWantsSSE()) return;               // allow per-page opt-out
 
     const url = api('/stream');                // /api/live/stream
     let es;
@@ -207,8 +221,7 @@
       }
     });
 
-    // IMPORTANT: close the stream immediately when navigating away
-    // to free the request worker (prevents random page stalls on dev server).
+    // Close the stream on navigation
     w.addEventListener('beforeunload', () => {
       try { w.__occtSSE?.es?.close(); } catch {}
     }, { once: true });
@@ -222,11 +235,10 @@
     notifyToast: showToast   // <-- compat for any older code expecting this name
   };
 
-  // run immediately (theme) and defer SSE until DOM is ready
+  // run immediately (theme) and start SSE ASAP
   applyThemeEarly();
+  initSSE();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSSE);
-  } else {
-    initSSE();
   }
 })(window, document);

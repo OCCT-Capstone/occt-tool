@@ -34,13 +34,11 @@
     const n = (v) => Number.isFinite(v) ? v : null;
     const parseTs = (v) => v ? Date.parse(v) : NaN;
 
-    // direct numeric fields first
     const dm = n(obj.duration_ms);
     if (dm != null) return dm;
     const em = n(obj.elapsed_ms);
     if (em != null) return em;
 
-    // derive from timestamps if available
     const a = parseTs(obj.started_at || obj.start_time || obj.started);
     const b = parseTs(obj.completed_at || obj.end_time || obj.finished);
     if (Number.isFinite(a) && Number.isFinite(b) && b >= a) return b - a;
@@ -87,7 +85,7 @@
 
   function load() {
     const theme = (localStorage.getItem(K.THEME) || DEFAULTS[K.THEME]);
-    const mode  = (localStorage.getItem(K.MODE)  || DEFAULTS[K.MODE]);
+    const mode  = (localStorage.getItem(K.MODe || K.MODE)  || DEFAULTS[K.MODE]); // tolerate accidental key typo
     if (themeDark) themeDark.checked = (theme === 'dark');
     if (apiMode)   apiMode.value     = mode;
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');
@@ -126,8 +124,6 @@
 
   /* ---------------- LIVE job polling helper (prevents SAMPLE mix) ---------------- */
 
-  // Always pull final numbers from the LIVE job endpoint when a job_id exists.
-  // This endpoint calculates totals from source='live', so SAMPLE rows can't contaminate it.
   async function pullLiveJobTotals(baseRescanUrl, jobId) {
     try {
       const jobsBase = baseRescanUrl.replace(/\/rescan(\?.*)?$/, '/jobs/');
@@ -152,20 +148,16 @@
     try {
       if (window.occt?.loading?.show) window.occt.loading.show();
 
-      // Always hit LIVE directly
       const rescanUrl = '/api/live/rescan?wait=1';
       const resp = await fetch(rescanUrl, { method: 'POST' });
       const body = await resp.json().catch(() => ({}));
 
-      // Prefer server-reported duration, else our stopwatch
       let durMs = pickDurationMs(body) ?? ((performance && performance.now) ? (performance.now() - started) : (Date.now() - started));
 
-      // LIVE-only fields (do NOT read *_unique)
       const toNum = (v) => (v == null ? null : Number(v));
       let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
       let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
 
-      // If a job exists, ALWAYS pull final LIVE totals (prevents mixing)
       if (body?.job_id) {
         const j = await pullLiveJobTotals('/api/live/rescan', body.job_id);
         if (j.ing  != null) ing  = j.ing;
@@ -173,13 +165,12 @@
         if (j.dur  != null) durMs = j.dur;
       }
 
-      const numberOrDash = (v) => (Number.isFinite(v) ? v : '—');
-
       if (resp.ok) {
-        setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
-        showToast('LIVE rescan complete');
-        await refreshHeaderLastScan();                // update header hint
-        await refreshScanAvailability();              // controls may become enabled
+        // CHANGED: simplify success message
+        setText(rescanMsg, 'Scan complete.');
+        showToast('Scan complete');
+        await refreshHeaderLastScan();
+        await refreshScanAvailability();
       } else {
         const msg = body?.message || `LIVE rescan failed (${resp.status})`;
         setText(rescanMsg, msg);
@@ -199,7 +190,7 @@
     showToast(`Data source: ${mode.toUpperCase()}`);
     updateRescanState();
     refreshHeaderLastScan();
-    refreshScanAvailability(); // NEW
+    refreshScanAvailability();
 
     if (mode === 'live') {
       autoRescanLive();
@@ -223,7 +214,7 @@
 
     updateRescanState();
     refreshHeaderLastScan();
-    refreshScanAvailability(); // NEW
+    refreshScanAvailability();
 
     showToast('Defaults restored');
 
@@ -249,8 +240,6 @@
     rescanBtn.textContent = 'Rescanning…';
     setText(rescanMsg, '');
 
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    const numberOrDash = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : '—');
     const started = (performance && performance.now) ? performance.now() : Date.now();
 
     try {
@@ -270,13 +259,11 @@
         return;
       }
 
-      // LIVE-only fields (no *_unique here)
       const toNum = (v) => (v == null ? null : Number(v));
       let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
       let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
-      let durMs = pickDurationMs(body); // may be null
+      let durMs = pickDurationMs(body);
 
-      // If a job exists, ALWAYS read job totals (LIVE-only, avoids SAMPLE contamination)
       const isLive = baseUrl.startsWith('/api/live');
       if (body?.job_id && isLive) {
         const j = await pullLiveJobTotals(baseUrl, body.job_id);
@@ -289,10 +276,11 @@
         durMs = (performance && performance.now) ? (performance.now() - started) : (Date.now() - started);
       }
 
-      setText(rescanMsg, `Rescan OK. Ingested: ${numberOrDash(ing)}, Failed: ${numberOrDash(fail)}, Duration: ${formatDuration(durMs)}`);
-      showToast('Rescan complete');
+      // CHANGED: simplify success message
+      setText(rescanMsg, 'Scan complete.');
+      showToast('Scan complete');
       await refreshHeaderLastScan();
-      await refreshScanAvailability(); // NEW
+      await refreshScanAvailability();
 
     } catch (e) {
       const msg = `Rescan error: ${e}`;
@@ -303,13 +291,12 @@
     }
   }
 
-  // --- Helpers to block anchor interactions when disabled (used in gating) ---
+  // --- Helpers to block anchor interactions when disabled ---
   function blockNav(e) { e.preventDefault(); e.stopPropagation(); }
   function blockKey(e) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
   }
 
-  // Mode-aware gating for settings controls and sections
   function setScanControlsEnabled(enabled, meta, mode) {
     const ctrls = document.querySelectorAll('[data-live-only]');
     ctrls.forEach(el => {
@@ -358,7 +345,7 @@
     const groups = document.querySelectorAll('[data-live-section]');
     groups.forEach(group => {
       const isFieldset = group.tagName && group.tagName.toUpperCase() === 'FIELDSET';
-      if (isFieldset) group.disabled = !enabled; // native disables children
+      if (isFieldset) group.disabled = !enabled;
       group.classList.toggle('is-disabled', !enabled);
       group.setAttribute('aria-disabled', String(!enabled));
     });
@@ -367,9 +354,8 @@
     if (banner) banner.classList.toggle('hidden', !!enabled);
   }
 
-  // Query current mode's last-scan availability and gate controls
   async function refreshScanAvailability() {
-    const mode = getModeLocal(); // 'live' or 'sample'
+    const mode = getModeLocal();
     try {
       const r = await fetch(pageApi('/last-scan'), {
         cache: 'no-store',
@@ -384,8 +370,6 @@
     }
   }
 
-  /* ---------------- report + logout ---------------- */
-
   function openReport() {
     const url = (window.occt && window.occt.api) ? window.occt.api('/report') : '/api/sample/report';
     window.open(url, '_blank');
@@ -398,13 +382,11 @@
     window.location.replace('/logout');
   }
 
-  /* ---------------- cross-tab sync ---------------- */
-
   window.addEventListener('storage', (e) => {
     if (e.key === K.MODE) {
       updateRescanState();
       refreshHeaderLastScan();
-      refreshScanAvailability(); // NEW
+      refreshScanAvailability();
     }
     if (e.key === K.THEME) {
       const dark = (e.newValue || 'light') === 'dark';
@@ -412,8 +394,6 @@
       document.documentElement.classList.toggle('theme-dark', dark);
     }
   });
-
-  /* ---------------- wire events ---------------- */
 
   themeDark?.addEventListener('change', applyThemeFromToggle);
   apiMode?.addEventListener('change', onModeChange);
