@@ -1,34 +1,31 @@
-/* Scoped to this page to avoid bleeding onto others */
+
 .page-detections {
-  /* Theme variables — inherit dark mode via .theme-dark on <html> */
   --bg: #ffffff;
-  --fg: #111827;          /* gray-900 */
-  --muted: #6b7280;       /* gray-500 */
-  --border: #e5e7eb;      /* gray-200 */
+  --fg: #111827;   
+  --muted: #6b7280;  
+  --border: #e5e7eb;  
   --panel: #ffffff;
-  --banner-bg: #f9fafb;   /* gray-50 */
+  --banner-bg: #f9fafb; 
   --table-stripe: #fafafa;
 
-  --sev-critical: #7f1d1d; /* dark red */
-  --sev-high: #dc2626;     /* red-600 */
-  --sev-medium: #d97706;   /* amber-600 */
-  --sev-low: #bdb75c;      /* blue-600 */
+  --sev-critical: #7f1d1d; 
+  --sev-high: #dc2626;   
+  --sev-medium: #d97706;  
+  --sev-low: #bdb75c;   
 }
 
-/* Dark mode override (site toggles .theme-dark on <html>) */
 .theme-dark .page-detections {
-  --bg: #0b1220;          /* deep navy */
-  --fg: #e5e7eb;          /* gray-200 */
-  --muted: #9ca3af;       /* gray-400 */
-  --border: #1f2937;      /* gray-800 */
-  --panel: #0f172a;       /* slate-900 */
+  --bg: #0b1220;      
+  --fg: #e5e7eb;       
+  --muted: #9ca3af;  
+  --border: #1f2937;    
+  --panel: #0f172a;   
   --banner-bg: #0f172a;
   --table-stripe: #111827;
 }
 
 .page-detections{ background-color: var(--bg); color: var(--fg); }
 
-/* Align with site’s content width */
 .maxwrap {
   max-width: 1100px;
   margin: 0 auto;
@@ -115,7 +112,6 @@
   overflow: hidden;
 }
 
-/* Table */
 .tbl { width: 100%; border-collapse: collapse; }
 .tbl th,
 .tbl td {
@@ -136,7 +132,6 @@
   white-space: pre-wrap;
 }
 
-/* Pager */
 .pager {
   display: flex;
   gap: 12px;
@@ -146,7 +141,6 @@
 }
 .pager-label { color: var(--muted); }
 
-/* Severity badges */
 .sev {
   display: inline-block;
   padding: 2px 8px;
@@ -161,20 +155,16 @@
 
 .status { font-size: 12px; color: var(--muted); }
 
-/* Utility */
 .hidden { display: none; }
 
-/* Small button size without overriding site .btn look */
 .btn.btn-sm,
 .btn-sm {
   padding: 4px 8px !important;
   font-size: 12px !important;
 }
 
-/* Keep filter rows togglable */
 .for-alerts.hidden, .for-events.hidden { display: none; }
 
-/* Responsive tweaks */
 @media (max-width: 720px) {
   .tbl thead { display: none; }
   .tbl tr { display: block; border-bottom: 1px solid var(--border); }
@@ -182,24 +172,20 @@
   .tbl td:last-child { grid-template-columns: 1fr; }
 }
 
-/* --- FIX: ensure hidden wins over display:flex from .filters .row --- */
 .page-detections .filters .row.hidden,
 .page-detections .for-alerts.hidden,
 .page-detections .for-events.hidden {
   display: none !important;
 }
 
-/* Optional: be explicit about the visible state so it stays flex when shown */
 .page-detections .filters .for-alerts:not(.hidden),
 .page-detections .filters .for-events:not(.hidden) {
   display: flex !important;
 }
 
-/* Controls card look */
 .controls-card {
   margin: 12px 0 18px;
   border-radius: 12px;
-  /* use site shadow if present; otherwise fall back */
   box-shadow: var(--shadow, 0 10px 24px rgba(2,6,23,.08));
 }
 
@@ -207,20 +193,17 @@
   padding: 10px 14px 14px;
 }
 
-/* Tabs inside card: give them a divider from filters */
 .controls-card .tabs {
   padding: 6px 0 0;
   margin: 0;
   border-bottom: 1px solid var(--border);
 }
 
-/* Filters inside card: remove the outer page divider */
 .controls-card .filters {
   padding: 12px 0 0;
-  border: 0;                         /* override page rule */
+  border: 0;                    
 }
 
-/* Keep your filter rows flex + togglable */
 .controls-card .filters .row { display: flex; }
 .page-detections .filters .row.hidden,
 .page-detections .for-alerts.hidden,
@@ -228,56 +211,49 @@
 .page-detections .filters .for-alerts:not(.hidden),
 .page-detections .filters .for-events:not(.hidden) { display: flex !important; }
 
-/* Remove the underline under "Detections" (just on this page) */
 .page-detections .page-header {
-  border-bottom: 0;               /* kill the line */
-  padding: 10px 0 4px;            /* tighten header block a bit */
-  margin-bottom: 4px;             /* minimal separation from card */
+  border-bottom: 0;   
+  padding: 10px 0 4px;  
+  margin-bottom: 4px;       
 }
 
 
-/* Pull the table card closer to the filters card */
 .page-detections .controls-card {
-  margin: 8px 0 10px;             /* was ~18px bottom; reduce gap */
+  margin: 8px 0 10px;    
 }
 .page-detections .controls-card .card-body {
-  padding: 8px 14px 10px;         /* slightly tighter inside the card */
+  padding: 8px 14px 10px;         
 }
 
-/* First results pane (alerts) — reduce default top padding */
 .page-detections #alertsPane.pane {
-  padding-top: 8px;               /* was 16px */
+  padding-top: 8px;              
 }
 
-/* If you want the Events pane to match when switched */
 .page-detections #eventsPane.pane {
   padding-top: 8px;
 }
 
-/* Keep event message readable */
 .tbl td.msg {
   max-width: 720px;
   white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 3;      /* number of lines to show */
+  -webkit-line-clamp: 3;     
   -webkit-box-orient: vertical;
 }
 
 .page-detections .tbl tbody tr.detail-row pre {
-  white-space: pre-wrap;   /* already present in many setups */
-  word-break: break-word;  /* ensures very long tokens wrap */
+  white-space: pre-wrap; 
+  word-break: break-word; 
 }
 
-/* Keep the final 'Details' column compact and always visible */
 .page-detections .tbl thead th:last-child,
 .page-detections .tbl tbody td:last-child {
   width: 1%;
   white-space: nowrap;
 }
 
-/* Clamp message column to two lines */
 .page-detections .tbl td.msg-cell{
   max-width: 680px;
   white-space: normal;
@@ -287,7 +263,6 @@
   -webkit-box-orient: vertical;
 }
 
-/* Details panel: readable and scrollable */
 .page-detections .detail-row .detail-wrap{
   display: grid;
   grid-template-columns: 280px 1fr;

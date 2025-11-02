@@ -25,7 +25,7 @@
       if (textEl) textEl.textContent = 'Last scan: ' + (j?.has_data ? fmt(j.completed_at) : '—');
       hint.hidden = false;
     } catch (_) {
-      // leave whatever is rendered
+
     }
   }
 

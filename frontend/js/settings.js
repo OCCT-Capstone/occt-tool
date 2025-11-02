@@ -1,4 +1,3 @@
-// static/js/settings.js
 (function () {
   const occt = window.occt || { K: { THEME: 'occt.theme', MODE: 'occt.apiMode' } };
   const K = occt.K;
@@ -15,7 +14,6 @@
   const reportBtn   = $('#reportBtn');
   const reportDlBtn = $('#reportDlBtn');
 
-  // Defaults: Light + LIVE
   const DEFAULTS = { [K.THEME]: 'light', [K.MODE]: 'live' };
 
   const setText = (el, v) => { if (el) el.textContent = v; };
@@ -27,34 +25,27 @@
     showToast._t = setTimeout(() => (toast.hidden = true), 1400);
   }
 
-  /* ---------------- duration helpers ---------------- */
-
   function pickDurationMs(obj) {
     if (!obj || typeof obj !== 'object') return null;
     const n = (v) => Number.isFinite(v) ? v : null;
     const parseTs = (v) => v ? Date.parse(v) : NaN;
-
     const dm = n(obj.duration_ms);
     if (dm != null) return dm;
     const em = n(obj.elapsed_ms);
     if (em != null) return em;
-
     const a = parseTs(obj.started_at || obj.start_time || obj.started);
     const b = parseTs(obj.completed_at || obj.end_time || obj.finished);
     if (Number.isFinite(a) && Number.isFinite(b) && b >= a) return b - a;
-
     return null;
   }
 
   function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms < 0) return '—';
-    if (ms < 90_000) return `${(ms / 1000).toFixed(1)}s`;
+    if (ms < 90000) return `${(ms / 1000).toFixed(1)}s`;
     const m = Math.floor(ms / 60000);
     const s = Math.round((ms % 60000) / 1000);
     return s ? `${m}m ${s}s` : `${m}m`;
   }
-
-  /* ---------------- API + header hint helpers ---------------- */
 
   function getModeLocal() {
     const v = apiMode?.value;
@@ -78,20 +69,18 @@
       const j = await r.json();
       setText(textEl, 'Last scan: ' + (j?.has_data ? fmt(j.completed_at) : '—'));
       hint.hidden = false;
-    } catch { /* leave whatever is there */ }
+    } catch {}
   }
-
-  /* ---------------- load + theme ---------------- */
 
   function load() {
     const theme = (localStorage.getItem(K.THEME) || DEFAULTS[K.THEME]);
-    const mode  = (localStorage.getItem(K.MODe || K.MODE)  || DEFAULTS[K.MODE]); // tolerate accidental key typo
+    const mode  = (localStorage.getItem(K.MODe || K.MODE)  || DEFAULTS[K.MODE]);
     if (themeDark) themeDark.checked = (theme === 'dark');
     if (apiMode)   apiMode.value     = mode;
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');
     updateRescanState();
     refreshHeaderLastScan();
-    refreshScanAvailability(); // NEW: gate controls for current mode
+    refreshScanAvailability();
   }
 
   function applyThemeFromToggle() {
@@ -101,28 +90,18 @@
     showToast(`Theme: ${dark ? 'Dark' : 'Light'}`);
   }
 
-  /* ---------------- rescan button state ---------------- */
-
   function updateRescanState() {
     if (!rescanBtn) return;
     const isSample = getModeLocal() === 'sample';
-
     rescanBtn.disabled = isSample;
     rescanBtn.setAttribute('aria-disabled', String(isSample));
-    rescanBtn.title = isSample
-      ? 'Disabled in SAMPLE mode. Switch to LIVE to run a scan.'
-      : '';
+    rescanBtn.title = isSample ? 'Disabled in SAMPLE mode. Switch to LIVE to run a scan.' : '';
     rescanBtn.classList.toggle('is-disabled', isSample);
-
     if (rescanHint) {
       rescanHint.hidden = !isSample;
-      rescanHint.textContent = isSample
-        ? 'Disabled in SAMPLE mode. Switch to LIVE to run a scan.'
-        : '';
+      rescanHint.textContent = isSample ? 'Disabled in SAMPLE mode. Switch to LIVE to run a scan.' : '';
     }
   }
-
-  /* ---------------- LIVE job polling helper (prevents SAMPLE mix) ---------------- */
 
   async function pullLiveJobTotals(baseRescanUrl, jobId) {
     try {
@@ -141,34 +120,26 @@
     }
   }
 
-  /* ---------------- auto-rescan on switch to LIVE ---------------- */
-
   async function autoRescanLive() {
     const started = (performance && performance.now) ? performance.now() : Date.now();
     try {
       if (window.occt?.loading?.show) window.occt.loading.show();
-
       const rescanUrl = '/api/live/rescan?wait=1';
       const resp = await fetch(rescanUrl, { method: 'POST' });
       const body = await resp.json().catch(() => ({}));
-
       let durMs = pickDurationMs(body) ?? ((performance && performance.now) ? (performance.now() - started) : (Date.now() - started));
-
       const toNum = (v) => (v == null ? null : Number(v));
       let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
       let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
-
       if (body?.job_id) {
         const j = await pullLiveJobTotals('/api/live/rescan', body.job_id);
         if (j.ing  != null) ing  = j.ing;
         if (j.fail != null) fail = j.fail;
         if (j.dur  != null) durMs = j.dur;
       }
-
       if (resp.ok) {
-        // CHANGED: simplify success message
         setText(rescanMsg, 'Scan complete.');
-        showToast('Scan complete');
+        showToast(`Scan complete, duration: ${formatDuration(durMs)}`);
         await refreshHeaderLastScan();
         await refreshScanAvailability();
       } else {
@@ -191,7 +162,6 @@
     updateRescanState();
     refreshHeaderLastScan();
     refreshScanAvailability();
-
     if (mode === 'live') {
       autoRescanLive();
     } else {
@@ -199,25 +169,18 @@
     }
   }
 
-  /* ---------------- Reset (LIVE default) ---------------- */
-
   function resetAll() {
     const prevMode = getModeLocal();
-
     Object.entries(DEFAULTS).forEach(([k, v]) => {
       try { localStorage.setItem(k, v); } catch {}
     });
-
     if (themeDark) themeDark.checked = (DEFAULTS[K.THEME] === 'dark');
     if (apiMode)   apiMode.value     = DEFAULTS[K.MODE];
     document.documentElement.classList.toggle('theme-dark', DEFAULTS[K.THEME] === 'dark');
-
     updateRescanState();
     refreshHeaderLastScan();
     refreshScanAvailability();
-
     showToast('Defaults restored');
-
     if (prevMode !== 'live' && DEFAULTS[K.MODE] === 'live') {
       autoRescanLive();
     } else {
@@ -225,45 +188,35 @@
     }
   }
 
-  /* ---------------- manual rescan button ---------------- */
-
   async function doRescan() {
     if (getModeLocal() === 'sample') {
       showToast('Rescan disabled in SAMPLE mode');
       setText(rescanMsg, 'Rescan disabled in SAMPLE mode');
       return;
     }
-
     if (!rescanBtn) return;
     rescanBtn.disabled = true;
     const orig = rescanBtn.textContent;
     rescanBtn.textContent = 'Rescanning…';
     setText(rescanMsg, '');
-
     const started = (performance && performance.now) ? performance.now() : Date.now();
-
     try {
       const baseUrl = (window.occt && window.occt.api) ? window.occt.api('/rescan') : '/api/live/rescan';
       const urlWithWait = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'wait=1';
-
       const resp = await fetch(urlWithWait, {
         method: 'POST',
         headers: { 'X-OCCT-No-Loader': '1' }
       });
-
       const body = await resp.json().catch(() => ({}));
-
       if (!resp.ok) {
         const msg = body?.message || `Rescan failed (${resp.status})`;
         showToast(msg); setText(rescanMsg, msg);
         return;
       }
-
       const toNum = (v) => (v == null ? null : Number(v));
       let ing  = toNum(body?.ingested ?? body?.inserted_total ?? null);
       let fail = toNum(body?.failed   ?? body?.failed_count   ?? null);
       let durMs = pickDurationMs(body);
-
       const isLive = baseUrl.startsWith('/api/live');
       if (body?.job_id && isLive) {
         const j = await pullLiveJobTotals(baseUrl, body.job_id);
@@ -271,17 +224,13 @@
         if (j.fail != null) fail = j.fail;
         if (j.dur  != null) durMs = j.dur;
       }
-
       if (!Number.isFinite(durMs)) {
         durMs = (performance && performance.now) ? (performance.now() - started) : (Date.now() - started);
       }
-
-      // CHANGED: simplify success message
       setText(rescanMsg, 'Scan complete.');
-      showToast('Scan complete');
+      showToast(`Scan complete, duration: ${formatDuration(durMs)}`);
       await refreshHeaderLastScan();
       await refreshScanAvailability();
-
     } catch (e) {
       const msg = `Rescan error: ${e}`;
       showToast('Rescan error'); setText(rescanMsg, msg);
@@ -291,7 +240,6 @@
     }
   }
 
-  // --- Helpers to block anchor interactions when disabled ---
   function blockNav(e) { e.preventDefault(); e.stopPropagation(); }
   function blockKey(e) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
@@ -302,7 +250,6 @@
     ctrls.forEach(el => {
       const tag = el.tagName.toUpperCase();
       const offTitle = `No ${mode.toUpperCase()} scans yet`;
-
       if (tag === 'A') {
         if (enabled) {
           if (el.dataset.hrefBackup) {
@@ -329,7 +276,6 @@
         }
         return;
       }
-
       el.disabled = !enabled;
       el.setAttribute('aria-disabled', String(!enabled));
       el.classList.toggle('is-disabled', !enabled);
@@ -341,7 +287,6 @@
         el.removeAttribute('tabindex');
       }
     });
-
     const groups = document.querySelectorAll('[data-live-section]');
     groups.forEach(group => {
       const isFieldset = group.tagName && group.tagName.toUpperCase() === 'FIELDSET';
@@ -349,7 +294,6 @@
       group.classList.toggle('is-disabled', !enabled);
       group.setAttribute('aria-disabled', String(!enabled));
     });
-
     const banner = document.getElementById('settings-live-banner');
     if (banner) banner.classList.toggle('hidden', !!enabled);
   }

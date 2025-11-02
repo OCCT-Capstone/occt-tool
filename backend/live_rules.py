@@ -1,27 +1,14 @@
 import re, json, os
-
-# Try YAML if available; otherwise allow JSON rules files
 try:
-    import yaml  # type: ignore
+    import yaml
 except Exception:
     yaml = None
 
 SAFE_GLOBALS = {"__builtins__": {}}
-
-# Only match identifier-like tokens (facts IDs), not numbers or operators
 _token_re = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
-
-# backend/live_rules.py
+_quoted_re = re.compile(r"(\'(?:[^'\\]|\\.)*\'|\"(?:[^\"\\]|\\.)*\")")
 
 def _normalize_rules(raw):
-    """
-    Normalizes rules to a common shape used downstream.
-    Back-compat:
-      - condition: prefers 'when', falls back to 'expr'
-      - text: prefers 'pass'/'fail', falls back to 'pass_text'/'fail_text'
-      - category defaults 'Security'; severity defaults 'medium'
-      - cc_sfr: carried through if present (supports cc_sfr / ccSfr / cc-sfr)
-    """
     rules = []
     for r in (raw or []):
         rules.append({
@@ -36,7 +23,6 @@ def _normalize_rules(raw):
             "cc_sfr":      (r.get("cc_sfr") or r.get("ccSfr") or r.get("cc-sfr") or ""),
         })
     return rules
-
 
 def load_rules(path: str):
     ext = os.path.splitext(path)[1].lower()
@@ -57,30 +43,46 @@ def facts_to_map(facts_list):
         m[f.get("id")] = f.get("value")
     return m
 
+def _normalize_literals_outside_quotes(s: str) -> str:
+    parts = re.split(_quoted_re, s or "")
+    for i in range(0, len(parts), 2):
+        seg = parts[i]
+        seg = re.sub(r"\btrue\b", "True", seg, flags=re.IGNORECASE)
+        seg = re.sub(r"\bfalse\b", "False", seg, flags=re.IGNORECASE)
+        seg = re.sub(r"\bnull\b", "None", seg, flags=re.IGNORECASE)
+        seg = re.sub(r"\bnone\b", "None", seg, flags=re.IGNORECASE)
+        parts[i] = seg
+    return "".join(parts)
+
+def _tokens_outside_quotes(s: str):
+    parts = re.split(_quoted_re, s or "")
+    unquoted = "".join(parts[::2])
+    return set(_token_re.findall(unquoted))
+
+def _replace_identifiers_outside_quotes(expr: str, facts: dict, reserved: set) -> str:
+    parts = re.split(_quoted_re, expr or "")
+    for i in range(0, len(parts), 2):
+        seg = parts[i]
+        tokens = set(_token_re.findall(seg))
+        for t in sorted(tokens, key=len, reverse=True):
+            if t in reserved:
+                continue
+            seg = re.sub(rf"\b{re.escape(t)}\b", f"facts.get('{t}')", seg)
+        parts[i] = seg
+    return "".join(parts)
+
 def _eval_expr(expr: str, facts: dict) -> bool:
-    """
-    Replace only identifier tokens (e.g., win.password.min_length) with facts.get('...').
-    Leave numbers (14), booleans (True/False), and operators (and/or/not) untouched.
-    """
     if not expr:
         return False
-
     RESERVED = {"and", "or", "not", "True", "False", "None"}
-
-    expr_py = expr
-    tokens = set(_token_re.findall(expr))
-    for t in sorted(tokens, key=len, reverse=True):
-        if t in RESERVED:
-            continue
-        expr_py = re.sub(rf"\b{re.escape(t)}\b", f"facts.get('{t}')", expr_py)
-
+    expr_py = _normalize_literals_outside_quotes(expr)
+    expr_py = _replace_identifiers_outside_quotes(expr_py, facts, RESERVED)
     try:
         return bool(eval(expr_py, SAFE_GLOBALS, {"facts": facts}))
     except Exception:
         return False
 
 def _render(tmpl: str, facts: dict) -> str:
-    # Replace {{fact.id}} placeholders using facts map
     return re.sub(
         r"{{\s*([A-Za-z0-9_.]+)\s*}}",
         lambda m: str(facts.get(m.group(1), "")),
@@ -88,32 +90,30 @@ def _render(tmpl: str, facts: dict) -> str:
     )
 
 def evaluate_facts_document(facts_doc: dict, rules_path: str):
-    """
-    facts_doc:
-      { collector, host:{hostname}, collected_at, facts:[{id,type,value}, ...] }
-    returns a list of derived events:
-      [{time,category,control,outcome,account,description,host}, ...]
-    """
     facts = facts_to_map(facts_doc.get("facts"))
     hostname = (facts_doc.get("host") or {}).get("hostname", "") or facts_doc.get("hostname", "")
     collected_at = facts_doc.get("collected_at")
     rules = load_rules(rules_path)
-
     out = []
+    RESERVED = {"and", "or", "not", "True", "False", "None"}
+
     for r in rules:
+        expr_norm = _normalize_literals_outside_quotes(r["expr"])
+        tokens = _tokens_outside_quotes(expr_norm)
+        missing = [t for t in tokens if t not in RESERVED and facts.get(t) is None]
+        if missing:
+            continue
         ok = _eval_expr(r["expr"], facts)
         outcome = "Passed" if ok else "Failed"
         desc = _render(r["pass_text"] if ok else r["fail_text"], facts)
-
         out.append({
             "time": collected_at,
-            "category": r["category"],     # used by UI
+            "category": r["category"],
             "control": r["title"],
             "outcome": outcome,
             "account": hostname or "LocalPolicy",
             "description": desc,
             "host": hostname,
-            # severity is normalized and available if/when you add a column/UI usage
             "severity": r["severity"],
             "rule_id": r["id"],
             "remediation": r["remediation"],

@@ -23,7 +23,7 @@
     },
     {
       "name": "win_auditpolicy",
-      "script": "collector/wrap_auditpolicy_to_facts.ps1",
+      "script": "collector/win_auditpolicy_audit.ps1",
       "interval_seconds": 600,
       "enabled": true,
       "replace_previous": true

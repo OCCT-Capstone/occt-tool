@@ -1,4 +1,4 @@
-/* Center the login card */
+
 .login-wrap {
   min-height: 100vh;
   display: grid;
@@ -7,18 +7,15 @@
   background: var(--bg, #f5f7fa);
 }
 
-/* Card */
 .login-card {
   width: clamp(420px, 70vw, 500px);
   padding: 1.6rem 1.4rem 1.2rem;
   text-align: center;
 }
 
-/* Logo + title */
 .login-card .logo { margin-bottom: .5rem; }
 .login-card .title { margin-bottom: 1rem; }
 
-/* Fields */
 .field { text-align: left; margin-top: 1rem; }
 .label { display:block; font-weight:600; margin-bottom:.35rem; }
 .input {
@@ -31,10 +28,8 @@
 }
 .input::placeholder { color: var(--field-placeholder, #9ca3af); }
 
-/* Actions */
 .login-actions { display:flex; justify-content:center; margin-top: 1.8rem; }
 
-/* Error */
 .login-error {
   color: #b91c1c;
   background: #fee2e2;
@@ -44,7 +39,6 @@
   margin-bottom: .6rem;
 }
 
-/* Spinner inside button (no layout shift) */
 #loginBtn { display:inline-flex; align-items:center; gap:.5rem; position:relative; }
 #loginBtn[disabled] { opacity:.85; cursor:not-allowed; }
 .btn-spinner {
@@ -57,7 +51,6 @@
 #loginBtn.loading .btn-spinner { display: inline-block; }
 #loginBtn.loading .btn-label::after { content: "…"; }
 
-/* a11y helper */
 .sr-only {
   position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
   clip:rect(0,0,0,0); white-space:nowrap; border:0;

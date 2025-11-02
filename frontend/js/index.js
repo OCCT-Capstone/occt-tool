@@ -3,7 +3,7 @@
   // ---------- Helpers ----------
   const api = (window.occt && window.occt.api)
     ? window.occt.api
-    : (p => '/api/sample' + p); // fallback to samples if site.js not present
+    : (p => '/api/sample' + p);
 
   const escapeHTML = (s='') =>
     s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
@@ -19,7 +19,7 @@
   const sevRank = s => ({ high:3, medium:2, low:1 }[String(s||'').toLowerCase()] || 0);
   const outRank = o => ({ failed:2, fail:2, passed:1, pass:1 }[String(o||'').toLowerCase()] || 0);
 
-  // ---------- Fetch dashboard + audit + rules (for severity enrichment) ----------
+
   try {
     const [dashRes, auditRes, rulesRes] = await Promise.all([
       fetch(api('/dashboard')),
@@ -40,7 +40,7 @@
     );
     const rowSeverityRank = (r) => sevRank(r.severity || sevMap.get((r.control || r.title || '').trim()));
 
-    // ===== Passed/Failed/Total (prefer API summary; else derive from audit rows) =====
+
     let passed = null, failed = null, total = null;
     if (dash?.summary) {
       if (typeof dash.summary.passed_count === 'number') passed = dash.summary.passed_count;
@@ -57,7 +57,7 @@
       if (passed == null) passed = p;
     }
 
-    // ===== Compliance % (0 dp) =====
+
     let compliancePct;
     if (typeof dash?.summary?.compliant_percent === 'number') {
       compliancePct = dash.summary.compliant_percent;
@@ -70,13 +70,11 @@
     }
     compliancePct = round0(compliancePct);
 
-    // ===== Donut =====
     const donutValueEl = document.getElementById('donut-value');
-    const pctTextEl    = document.getElementById('nonCompliantPct'); // UI label says "Compliance"
+    const pctTextEl    = document.getElementById('nonCompliantPct');
     if (donutValueEl) donutValueEl.setAttribute('stroke-dasharray', `${toNum(compliancePct, 0)}, 100`);
     if (pctTextEl)     pctTextEl.textContent = `${toNum(compliancePct, 0)}%`;
 
-    // ===== Bars (stacked) =====
     const monthly = Array.isArray(dash?.monthly) ? dash.monthly : [];
     const barChart = document.getElementById('barChart');
     const axisX    = document.getElementById('axisX');
@@ -109,7 +107,6 @@
       axisX.appendChild(tick);
     });
 
-    // ===== KPIs =====
     const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = (val ?? '—'); };
     setTxt('kpiTotal',   (typeof total  === 'number') ? String(total)  : '—');
     setTxt('kpiPassed',  (typeof passed === 'number') ? String(passed) : '0');
@@ -117,13 +114,11 @@
     setTxt('kpiIssues',        (typeof failed === 'number') ? String(failed) : '0');
     setTxt('kpiIssuesDetail',  (typeof failed === 'number') ? String(failed) : '0');
 
-    // distinct accounts
     const accounts = Array.isArray(audit)
       ? new Set(audit.map(r => r.account).filter(Boolean)).size
       : 0;
     setTxt('kpiAccounts', accounts || '—');
 
-    // ===== Audit preview (top 5) — Failed → Severity → Control =====
     const preview = document.getElementById('auditPreview');
     const rows = (Array.isArray(audit) ? audit : []).slice();
 

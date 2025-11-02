@@ -1,7 +1,4 @@
 // frontend/js/remediation.js
-// Plain-text remediation view that preserves single quotes.
-// Order of precedence: event description remediation → /api/<mode>/rules → generic per-category hint.
-// Additionally: Failed items are ordered by Severity (High→Low) → Control (A→Z).
 
 (async () => {
   const api = (window.occt && window.occt.api) ? window.occt.api : (p => '/api/sample' + p);
@@ -42,12 +39,12 @@
     return { observed: desc.trim(), remediation: '' };
   }
 
-  // Keep quotes, just remove stray "undefined" artifacts and extra spaces
+
   function cleanRemediationText(hintRaw) {
     if (!hintRaw) return '';
     let s = String(hintRaw);
-    s = s.replace(/\bundefined\b/g, '');   // strip literal "undefined"
-    s = s.replace(/\s{2,}/g, ' ').trim();  // collapse whitespace
+    s = s.replace(/\bundefined\b/g, '');
+    s = s.replace(/\s{2,}/g, ' ').trim();
     return s;
   }
 
@@ -89,7 +86,7 @@
 
     const failed = rows
       .filter(r => (r.outcome || '').toLowerCase() === 'failed')
-      // Severity (High→Low) → Control (A→Z)
+
       .sort((a,b) => {
         const sc = rowSev(b, rulesMap) - rowSev(a, rulesMap); if (sc) return sc;
         const an = (a.control || '').toLowerCase();
@@ -117,7 +114,7 @@
       listEl.innerHTML = data.map(r => {
         const { observed } = splitObservedRemediation(r.description || '');
         const hintRaw = state === 'fail' ? chooseRemediation(r, rulesMap) : '';
-        const hint = cleanRemediationText(hintRaw); // keep quotes
+        const hint = cleanRemediationText(hintRaw);
         const host = r.account || r.host || '';
 
         return `

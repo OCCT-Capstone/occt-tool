@@ -1,6 +1,5 @@
 /* Theme-only overrides for Audit & Remediation (no layout changes) */
 
-/* ---------- Audit page ---------- */
 :root.theme-dark .filters,
 :root.theme-dark .table-wrap {
   background: var(--card);
@@ -8,7 +7,6 @@
   border-color: var(--ring);
 }
 
-/* Dark header row */
 :root.theme-dark .table-wrap thead,
 :root.theme-dark .table-wrap thead tr,
 :root.theme-dark .table-wrap thead th {
@@ -17,11 +15,9 @@
   border-color: var(--ring);
 }
 
-/* Body rows */
 :root.theme-dark tbody td { border-color: var(--ring); }
 :root.theme-dark tbody tr:hover { background: rgba(148,163,184,.08); }
 
-/* Inputs/chips (page-level fallbacks; globals already handle most) */
 :root.theme-dark .input,
 :root.theme-dark .select {
   background: var(--field-bg);
@@ -38,11 +34,11 @@
   border-color: var(--muted);
 }
 
-/* Outcome pills use global tokens */
+
 :root.theme-dark .outcome.pass{ background: var(--pill-pass-bg); color: var(--pill-pass-fg); }
 :root.theme-dark .outcome.fail{ background: var(--pill-fail-bg); color: var(--pill-fail-fg); }
 
-/* ---------- Remediation page ---------- */
+
 :root.theme-dark .panel,
 :root.theme-dark .fix {
   background: var(--card);

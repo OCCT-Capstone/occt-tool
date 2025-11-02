@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
-# OCCT – Windows host compliance facts (Python collector)
-# Emits JSON to STDOUT with: {collector, host, collected_at, facts:[{id,type,value}, ...]}
-
 import json, os, sys, subprocess, datetime, re
 
 def iso_now():
-    return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def fact_bool(fid, v): return {"id": fid, "type":"bool", "value": bool(v)}
 def fact_int(fid, v):  return {"id": fid, "type":"int",  "value": int(v)}
@@ -18,13 +14,11 @@ def run(cmd, timeout=25):
     return p.stdout
 
 def pwsh(ps, timeout=25):
-    # Use Windows PowerShell for widest compatibility
     ps_path = os.environ.get("OCCT_PWSH", r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
     return run([ps_path, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], timeout=timeout)
 
 def secedit_export(tmp_path):
     out = run(["secedit", "/export", "/cfg", tmp_path], timeout=20)
-    # UTF-16 LE text; parse minimal keys we need
     with open(tmp_path, "r", encoding="utf-16") as f:
         lines = f.readlines()
     kv = {}
@@ -36,7 +30,6 @@ def secedit_export(tmp_path):
 
 def get_wevtutil_gl(channel="Security"):
     out = run(["wevtutil", "gl", channel], timeout=10)
-    # parse: maxSize: 134217728   retention: true/false
     bytes_size = None; retention = None
     for line in out.splitlines():
         if "maxSize:" in line:
@@ -49,7 +42,6 @@ def get_wevtutil_gl(channel="Security"):
 def icacls_security_writers():
     path = r"C:\Windows\System32\winevt\Logs\Security.evtx"
     out = run(["icacls", path], timeout=10)
-    # allow-list identities with write-like rights
     allow = {
         r"NT AUTHORITY\SYSTEM",
         r"BUILTIN\Administrators",
@@ -78,39 +70,38 @@ def time_service_facts():
     svc = pwsh("Get-Service w32time | Select-Object -ExpandProperty Status").strip()
     start_type = pwsh("(Get-Service w32time).StartType.ToString()").strip()
 
-    # configuration + status
-    cfg = run(["w32tm", "/query", "/configuration"], timeout=10)
-    src = "Unknown"
-    for line in cfg.splitlines():
-        if "Source:" in line:
-            src = line.split("Source:")[1].strip()
-            break
+    # Query both configuration and status once
+    cfg    = run(["w32tm", "/query", "/configuration"], timeout=10)
+    status = run(["w32tm", "/query", "/status"],        timeout=10)
 
-    # NEW: peers configured?
-    # Look for "NtpServer:" line and ensure it's not "Not Configured"/empty
+    # peers configured?
     m_ntp = re.search(r"(?im)^\s*NtpServer:\s*(.+?)\s*$", cfg)
     ntp_raw = (m_ntp.group(1).strip() if m_ntp else "")
     ntp_configured = bool(ntp_raw and ntp_raw.lower() != "not configured")
 
-    status = run(["w32tm", "/query", "/status"], timeout=10)
-    last = None
-    for line in status.splitlines():
-        if "Last Successful Sync Time" in line:
-            last = line.split(":",1)[1].strip()
-            break
-    hours_since = 9999
-    if last:
-        # normalize via PowerShell to handle locale
-        iso = pwsh(f"[datetime]::Parse('{last}').ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')").strip()
-        try:
-            dt = datetime.datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ")
-            hours_since = int((datetime.datetime.utcnow()-dt).total_seconds()//3600)
-        except: pass
+    # source (from /status)
+    src = "Unknown"
+    m_src = re.search(r"(?im)^\s*Source:\s*(.+?)\s*$", status)
+    if m_src:
+        src = m_src.group(1).strip()
+
+    # hours since last sync (let PowerShell parse the locale-specific date)
+    try:
+        ps = r"""
+$line = (w32tm /query /status) -match 'Last Successful Sync Time'
+if ($line) {
+  $val = ($line -split ':',2)[1].Trim()
+  [int]((Get-Date).ToUniversalTime().Subtract([datetime]::Parse($val).ToUniversalTime()).TotalHours)
+} else { 9999 }
+"""
+        hours_since = int(pwsh(ps, timeout=10).strip())
+    except Exception:
+        hours_since = 9999
+
     return (svc.lower()=="running", start_type, src, hours_since, ntp_configured)
 
+
 def admins_group_facts():
-    """Return (checked, unauthorized_count, unauthorized_count_strict)"""
-    # list local Administrators members; compare to allow-lists
     base_allow = {
         r"BUILTIN\Administrators",
         r"NT AUTHORITY\SYSTEM",
@@ -130,24 +121,51 @@ def admins_group_facts():
     unauth_strict = [m for m in members if m not in strict_allow]
     return True, len(unauth), len(unauth_strict)
 
-def local_builtin_accounts():
-    # RID 500 admin & 501 guest Enabled flags
-    ps = r"Get-LocalUser | Select-Object Name,Enabled,SID | ConvertTo-Json"
-    out = pwsh(ps)
+def _wmic_rid_enabled(sid_suffix):
     try:
+        out = run(["wmic", "useraccount", "where", f"LocalAccount='TRUE' and SID like '%-{sid_suffix}'", "get", "Disabled", "/value"], timeout=8)
+        m = re.search(r"(?i)Disabled=(True|False)", out)
+        if not m: return None
+        disabled = m.group(1).lower() == "true"
+        return not disabled
+    except Exception:
+        return None
+
+def _net_user_enabled(name):
+    try:
+        out = run(["net", "user", name], timeout=8)
+        m = re.search(r"(?im)^\s*Account\s+active\s+(\S.+?)\s*(Yes|No)\s*$", out)
+        if not m:
+            m = re.search(r"(?im)^\s*Account\s+active\s*[:\. ]+\s*(Yes|No)\s*$", out)
+        if not m: return None
+        return m.group(m.lastindex).strip().lower() == "yes"
+    except Exception:
+        return None
+
+def local_builtin_accounts():
+    admin_enabled = None; guest_enabled = None
+    try:
+        ps = r"Get-LocalUser | Select-Object Name,Enabled,SID | ConvertTo-Json"
+        out = pwsh(ps)
         arr = json.loads(out)
         if isinstance(arr, dict): arr=[arr]
-    except:
-        arr=[]
-    admin_enabled = None; guest_enabled = None
-    for u in arr:
-        sid = str(u.get("SID",""))
-        if sid.endswith("-500"): admin_enabled = bool(u.get("Enabled", False))
-        if sid.endswith("-501"): guest_enabled = bool(u.get("Enabled", False))
+        for u in arr:
+            sid = str(u.get("SID",""))
+            if sid.endswith("-500"): admin_enabled = bool(u.get("Enabled", False))
+            if sid.endswith("-501"): guest_enabled = bool(u.get("Enabled", False))
+    except Exception:
+        pass
+    if admin_enabled is None:
+        admin_enabled = _wmic_rid_enabled("500")
+    if guest_enabled is None:
+        guest_enabled = _wmic_rid_enabled("501")
+    if admin_enabled is None:
+        admin_enabled = _net_user_enabled("Administrator")
+    if guest_enabled is None:
+        guest_enabled = _net_user_enabled("Guest")
     return admin_enabled, guest_enabled
 
 def sample_event_keyfields():
-    # quick health check: do we see EventID, TimeCreated, TargetUserName in recent security events?
     try:
         ps = r"""
 $ev = Get-WinEvent -LogName Security -MaxEvents 10 | Select-Object -First 5
@@ -169,10 +187,7 @@ def main():
     if os.name != "nt":
         print(json.dumps({"error": "windows_only"})); return
     facts = []
-
     hostname = os.environ.get("COMPUTERNAME","")
-
-    # --- Password policy & lockout via secedit (with net accounts fallback) ---
     pw_min_len = pw_complex = pw_max_age = pw_min_age = pw_hist = 0
     lock_threshold = lock_duration = lock_reset = 0
     try:
@@ -187,7 +202,6 @@ def main():
         lock_duration  = int(kv.get("LockoutDuration","0") or "0")
         lock_reset     = int(kv.get("ResetLockoutCount","0") or "0")
     except Exception:
-        # fallback: net accounts (locale fragile, best-effort)
         na = run(["net","accounts"], timeout=8)
         def m(rx):
             mm = re.search(rx, na)
@@ -199,8 +213,7 @@ def main():
         lock_threshold = int(m(r"Lockout threshold\s*:\s*(\d+)"))
         lock_duration  = int(m(r"Lockout duration\s*:\s*(\d+)"))
         lock_reset     = int(m(r"Lockout observation window\s*:\s*(\d+)"))
-        pw_complex = False  # 'net accounts' doesn't expose this
-
+        pw_complex = False
     facts += [
         fact_int ("win.pw.min_length", pw_min_len),
         fact_bool("win.pw.complexity_required", pw_complex),
@@ -211,50 +224,37 @@ def main():
         fact_int ("win.lockout.duration_minutes", lock_duration),
         fact_int ("win.lockout.reset_minutes", lock_reset),
     ]
-
-    # --- Security.evtx retention/size ---
     bytes_size, retention = get_wevtutil_gl("Security")
     size_mb = int((bytes_size or 0) // (1024*1024))
     facts += [
         fact_int ("win.evtx.security.max_size_mb", size_mb),
         fact_bool("win.evtx.security.retention_enabled", bool(retention)),
     ]
-
-    # --- Security.evtx ACL protection ---
     offenders, checked = icacls_security_writers()
     facts += [
         fact_bool("win.evtx.security.acl_checked", checked),
         fact_int ("win.evtx.security.write_offender_count", offenders),
     ]
-
-    # --- Time service ---
     running, start_type, source, hours_since, ntp_configured = time_service_facts()
     facts += [
         fact_bool("win.time.service_running", running),
         fact_str ("win.time.start_type", start_type),
         fact_str ("win.time.source", source),
         fact_int ("win.time.hours_since_last_sync", hours_since),
-        fact_bool("win.time.ntp_configured", ntp_configured),  # NEW
+        fact_bool("win.time.ntp_configured", ntp_configured),
     ]
-
-    # --- Local built-ins ---
     admin_enabled, guest_enabled = local_builtin_accounts()
     if admin_enabled is not None:
         facts += [fact_bool("win.local.admin500_enabled", admin_enabled)]
     if guest_enabled is not None:
         facts += [fact_bool("win.local.guest501_enabled", guest_enabled)]
-
-    # --- Administrators group baseline (now emitted) ---
     admins_checked, unauth_cnt, unauth_cnt_strict = admins_group_facts()
     facts += [
         fact_bool("win.admins.checked", admins_checked),
         fact_int ("win.admins.unauthorized_count", unauth_cnt),
-        fact_int ("win.admins.unauthorized_count_strict", unauth_cnt_strict),  # optional stricter metric
+        fact_int ("win.admins.unauthorized_count_strict", unauth_cnt_strict),
     ]
-
-    # --- Log content has key fields (health check) ---
     facts += [fact_bool("win.evtx.security.sample_has_key_fields", sample_event_keyfields())]
-
     doc = {
         "collector": "win_host",
         "host": {"hostname": os.environ.get("COMPUTERNAME","")},

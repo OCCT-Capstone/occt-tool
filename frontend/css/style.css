@@ -90,6 +90,7 @@ main {
   --muted:#90a0b8;
   --ring:#1b2435;
   --shadow: 0 8px 30px rgba(0,0,0,0.45);
+  --nav-bg-alpha: rgba(11,18,32,0.80);
 
   --link:#7cb7ff;
 
@@ -128,11 +129,17 @@ main {
    Top bar
    ======================================= */
 .topbar{
-  position: relative;
+  position: sticky;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  min-height: var(--nav-h);
   display: flex;
   align-items: center;
   padding: 0.9rem 1.2rem;
-  background: linear-gradient(180deg, #0b1220, #0f172a);
+  background: var(--nav-bg-alpha);
+  backdrop-filter: saturate(140%) blur(6px);
+  -webkit-backdrop-filter: saturate(140%) blur(6px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   box-shadow: var(--shadow);
 }
@@ -379,7 +386,7 @@ select:-webkit-autofill {
 /* --- Realtime toast notifications --- */
 .toast-stack {
   position: fixed;
-  top: 16px;
+  top: calc(var(--nav-h, 56px) + 16px);
   right: 16px;
   width: 360px;
   max-width: calc(100vw - 32px);
@@ -424,4 +431,92 @@ select:-webkit-autofill {
   font-size: .82rem;
   padding: 6px 10px;
   border-radius: 8px;
+}
+
+/* === OCCT ultra-minimal translucent scrollbars (ChatGPT-style) === */
+:root{
+  --sb-size: 6px;                 /* set 4–6px for ultra slim */
+  --sb-radius: 999px;             /* fully rounded pill */
+  --sb-track: transparent;        /* overlay feel */
+  --sb-thumb: rgba(60,60,67,.22); /* light mode: subtle */
+  --sb-thumb-hover: rgba(60,60,67,.42);
+  --sb-thumb-active: rgba(60,60,67,.55);
+  --nav-h: 56px;
+  --nav-bg-alpha: rgba(15,23,42,0.92);
+}
+.theme-dark{
+  --sb-track: transparent;
+  --sb-thumb: rgba(235,235,245,.18);  /* dark mode: subtle */
+  --sb-thumb-hover: rgba(235,235,245,.36);
+  --sb-thumb-active: rgba(235,235,245,.50);
+}
+
+/* Base: apply globally; Firefox uses these tokens */
+html, body, .custom-scroll{
+  scrollbar-width: thin;                    /* Firefox */
+  scrollbar-color: transparent transparent; /* hidden until hover/focus */
+  scrollbar-gutter: auto;                 /* avoid layout shift */
+}
+
+html.has-scrollbar body{
+  scrollbar-gutter: stable;    /* reserve space if scrollbar present */
+}
+
+/* Reveal on hover/focus (Firefox) */
+html:hover, body:focus-within{
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+}
+
+/* WebKit (Chrome/Edge/Safari) — vertical + horizontal */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.custom-scroll::-webkit-scrollbar{
+  width: var(--sb-size);
+  height: var(--sb-size);
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+.custom-scroll::-webkit-scrollbar-track{
+  background: var(--sb-track);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.custom-scroll::-webkit-scrollbar-thumb{
+  background: var(--sb-thumb);
+  border-radius: var(--sb-radius);
+  border: 3px solid transparent;       /* creates airy overlay look */
+  background-clip: padding-box;        /* keeps thumb ultra-thin */
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+/* Hover/active states */
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+.custom-scroll::-webkit-scrollbar-thumb:hover{
+  background: var(--sb-thumb-hover);
+  background-clip: padding-box;
+}
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+.custom-scroll::-webkit-scrollbar-thumb:active{
+  background: var(--sb-thumb-active);
+  background-clip: padding-box;
+}
+
+/* Auto-fade when not interacting (WebKit) */
+html:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb,
+body:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb,
+.custom-scroll:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb{
+  background: transparent;
+  border-color: transparent;
+}
+
+
+
+@media (forced-colors: active){
+  html, body, .custom-scroll{
+    scrollbar-color: ButtonText Canvas;
+  }
 }

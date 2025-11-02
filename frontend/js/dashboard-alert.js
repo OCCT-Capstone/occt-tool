@@ -1,6 +1,5 @@
 // frontend/js/dashboard-alert.js
 (function () {
-  // Reuse OCCT mode convention (SAMPLE vs LIVE)
   const occt = window.occt || { K: { MODE: 'occt.apiMode' } };
   const K = occt.K;
 
@@ -11,7 +10,6 @@
     return (getMode() === 'sample' ? '/api/sample' : '/api/live') + path;
   }
 
-  // --- Style + container (scoped, minimal) ---
   const STYLE_ID = 'occt-toast-style';
   const WRAP_ID  = 'occt-toast-wrap';
   function ensureStyle() {
@@ -74,27 +72,21 @@
     `;
     wrap.appendChild(t);
 
-    // enter animation
     requestAnimationFrame(() => t.classList.add('show'));
 
     const close = () => {
-      // exit animation
       t.classList.add('leaving');
       const done = () => t.remove();
       t.addEventListener('transitionend', done, { once: true });
-      // safety timeout in case transitionend doesn’t fire
       setTimeout(done, 300);
     };
 
-    // click ×
     t.querySelector('.close')?.addEventListener('click', close);
 
-    // auto-timeout
     if (timeout > 0) setTimeout(close, timeout);
 
-    // swipe-to-dismiss (pointer events)
     let startX = 0, curX = 0, dragging = false;
-    const threshold = 60; // px to dismiss
+    const threshold = 60;
     const onDown = (e) => {
       dragging = true;
       startX = (e.touches ? e.touches[0].clientX : e.clientX);
@@ -104,28 +96,25 @@
     const onMove = (e) => {
       if (!dragging) return;
       curX = (e.touches ? e.touches[0].clientX : e.clientX);
-      const dx = Math.max(0, curX - startX); // only allow swipe right
-      t.style.transform = `translateX(${dx + 0}px)`; // keep current y
+      const dx = Math.max(0, curX - startX);
+      t.style.transform = `translateX(${dx + 0}px)`;
       t.style.opacity = String(Math.max(0, 1 - dx / 160));
     };
     const onUp = () => {
       if (!dragging) return;
       dragging = false;
       const dx = Math.max(0, curX - startX);
-      t.style.transition = ''; // restore transitions
+      t.style.transition = '';
       if (dx > threshold) close();
       else {
-        // snap back
         t.style.transform = '';
         t.style.opacity = '';
       }
     };
-    // attach handlers
     t.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp, { once: false });
 
-    // clean up listeners when removed
     t.addEventListener('transitionend', () => {
       if (!document.body.contains(t)) {
         window.removeEventListener('pointermove', onMove);
@@ -136,7 +125,6 @@
     return t;
   }
 
-  // Avoid repeating the same toast for the same scan in this tab
   function alreadyShownFor(completedAt) {
     try {
       const key = 'occt.toast.scanShown';
@@ -155,16 +143,15 @@
       });
       if (!res.ok) return;
       const j = await res.json();
-      if (!j?.has_data) return;                    // Only after first scan done
+      if (!j?.has_data) return;
 
       const completedAt  = j.completed_at || '';
-      if (alreadyShownFor(completedAt)) return;    // Don’t repeat for same scan
+      if (alreadyShownFor(completedAt)) return;
 
       const failed = Number(j.failed_count ?? 0);
       const passed = Number(j.passed_count ?? 0);
       const checks = Number(j.check_count ?? (passed + failed || 0));
 
-      // Only show when not 100% compliant
       if (checks > 0 && failed > 0) {
         const html = `
           <strong>Warning:</strong> ${failed} check${failed===1?'':'s'} failed compliance.
@@ -175,13 +162,10 @@
         `;
         toast({ html, kind: 'warn', timeout: 7000 });
       }
-      // else: fully compliant → no toast
     } catch {
-      /* silent */
     }
   }
 
-  // Run on dashboard load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', maybeShowComplianceToast, { once: true });
   } else {

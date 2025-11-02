@@ -1,45 +1,95 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function NowIsoUtc { (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") }
-function New-StrFact($id, [string]$value){ [pscustomobject]@{ id=$id; type="string"; value=$value } }
-function New-BoolFact($id, [bool]$value){ [pscustomobject]@{ id=$id; type="bool";   value=$value } }
-
-$need = @("Logon","Security Group Management","User Account Management","Account Lockout","Audit Policy Change")
-$ap = & auditpol /get /subcategory:($need -join '","') 2>$null
+function Get-NowIsoUtc { (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") }
+function New-BoolFact { param([Parameter(Mandatory)][string]$Id,[Parameter(Mandatory)][bool]$Value) [pscustomobject]@{id=$Id;type="bool";value=$Value} }
+function New-StrFact  { param([Parameter(Mandatory)][string]$Id,[Parameter(Mandatory)][string]$Value) [pscustomobject]@{id=$Id;type="string";value=$Value} }
+function NormalizeName { param([Parameter(Mandatory)][string]$s) ($s -replace '[^A-Za-z0-9]+','_').Trim('_').ToLower() }
+function Invoke-Native {
+  param([Parameter(Mandatory)][string]$File,[Parameter()][string[]]$Args)
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $File
+  $psi.Arguments = [string]::Join(' ', $Args)
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.CreateNoWindow = $true
+  $p = New-Object System.Diagnostics.Process
+  $p.StartInfo = $psi
+  [void]$p.Start()
+  $stdout = $p.StandardOutput.ReadToEnd()
+  $stderr = $p.StandardError.ReadToEnd()
+  $p.WaitForExit()
+  [pscustomobject]@{ ExitCode=$p.ExitCode; StdOut=$stdout; StdErr=$stderr }
+}
 
 $facts = New-Object System.Collections.Generic.List[object]
-$map = @{
-  "Logon"                     = "win.audit.Logon"
-  "Security Group Management" = "win.audit.SecurityGroupManagement"
-  "User Account Management"   = "win.audit.UserAccountManagement"
-  "Account Lockout"           = "win.audit.AccountLockout"
-  "Audit Policy Change"       = "win.audit.AuditPolicyChange"
+$ap = Join-Path $env:WINDIR "System32\auditpol.exe"
+
+$want = @(
+  'Logon',
+  'User Account Management',
+  'Security Group Management',
+  'Audit Policy Change',
+  'Account Lockout'
+)
+
+$aliases = @{
+  'logon'                     = 'Logon'
+  'user_account_management'   = 'UserAccountManagement'
+  'security_group_management' = 'SecurityGroupManagement'
+  'audit_policy_change'       = 'AuditPolicyChange'
+  'account_lockout'           = 'AccountLockout'
 }
-foreach ($line in ($ap -split "`r?`n")) {
-  if ($line -match "^\s*(Logon|Security Group Management|User Account Management|Account Lockout|Audit Policy Change)\s+(Success|Failure|No Auditing|Success, Failure|Success,Failure)\s*$") {
-    $sub = $matches[1].Trim()
-    $val = $matches[2].Replace("Success, Failure","Success,Failure")
-    $facts.Add((New-StrFact $map[$sub] $val))
+
+$agg = @{}
+$names = Invoke-Native $ap @('/list','/subcategory:*')
+$subs = @()
+if ($names.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($names.StdOut)) {
+  $subs = $names.StdOut -split "`r?`n" | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim() } | Sort-Object -Unique
+} else {
+  $subs = $want
+}
+
+foreach ($s in $subs) {
+  $g = Invoke-Native $ap @('/get',("/subcategory:`"{0}`"" -f $s))
+  if ($g.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($g.StdOut)) { continue }
+  $glines = $g.StdOut -split "`r?`n" | Where-Object { $_ -match '^\s{2,}.+?\s{2,}.+$' }
+  foreach ($line in $glines) {
+    if ($line -match '^\s{2,}(.+?)\s{2,}(.+?)\s*$') {
+      $sub = $Matches[1].Trim()
+      $setting = $Matches[2].Trim()
+      $subNorm = NormalizeName $sub
+      $succ = ($setting -match 'Success')
+      $fail = ($setting -match 'Failure')
+      $facts.Add((New-BoolFact ("win.audit.{0}.success_enabled" -f $subNorm) $succ))
+      $facts.Add((New-BoolFact ("win.audit.{0}.failure_enabled" -f $subNorm) $fail))
+      $val = if ($succ -and $fail) { 'Success,Failure' } elseif ($succ) { 'Success' } elseif ($fail) { 'Failure' } else { 'NoAuditing' }
+      $norm = NormalizeName $sub
+      if ($aliases.ContainsKey($norm)) { $agg[$aliases[$norm]] = $val }
+    }
   }
 }
-$adv = ($facts | Where-Object { $_.value -match "Success|Failure" }).Count -gt 0
-$facts.Add((New-BoolFact "win.audit.AdvancedAuditingEnabled" $adv))
 
-# --- Crash on audit fail (FAU_STG.4) ---
-$crashOnAuditFail = $false
+foreach ($k in $agg.Keys) {
+  $facts.Add((New-StrFact ("win.audit.{0}" -f $k) $agg[$k]))
+}
+
+$advVal = $false
+$coafVal = $false
 try {
-    $val = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -Name 'CrashOnAuditFail' -ErrorAction SilentlyContinue
-    if ($null -ne $val -and $val.CrashOnAuditFail -eq 1) { $crashOnAuditFail = $true }
-} catch { }
+  $lsa = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -ErrorAction Stop
+  if ($null -ne $lsa.SCENoApplyLegacyAuditPolicy) { if ([int]$lsa.SCENoApplyLegacyAuditPolicy -eq 1) { $advVal = $true } }
+  if ($null -ne $lsa.CrashOnAuditFail) { if ([int]$lsa.CrashOnAuditFail -ge 1) { $coafVal = $true } }
+} catch {}
+$facts.Add((New-BoolFact 'win.audit.AdvancedAuditingEnabled' $advVal))
+$facts.Add((New-BoolFact 'win.audit.CrashOnAuditFail' $coafVal))
 
-# Add to your facts object (example shape)
-$facts.win.audit.CrashOnAuditFail = $crashOnAuditFail
 
-
-[pscustomobject]@{
+$result = [pscustomobject]@{
   collector    = "win_auditpolicy"
   host         = @{ hostname = $env:COMPUTERNAME }
-  collected_at = NowIsoUtc
+  collected_at = Get-NowIsoUtc
   facts        = $facts
-} | ConvertTo-Json -Depth 6
+}
+$result | ConvertTo-Json -Depth 6

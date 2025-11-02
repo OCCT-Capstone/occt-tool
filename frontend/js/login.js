@@ -39,7 +39,7 @@
     if (!btn || btn.hasAttribute('disabled')) return;
 
     setLoading(true, 'Signing in…');
-    const minHold = wait(600); // avoid flicker
+    const minHold = wait(600);
 
     const username = (document.getElementById('username')?.value || '').trim();
     const password = (document.getElementById('password')?.value || '');
@@ -68,7 +68,7 @@
       const data = await res.json();
       await minHold;
 
-      // Redirect only (no scan here)
+
       window.location.replace(data.redirect || '/home');
 
     } catch {

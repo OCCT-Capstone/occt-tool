@@ -1,9 +1,9 @@
-// frontend/js/detections.js
+// static/js/detections.js
 (function () {
   const occt = window.occt || { K: { MODE: 'occt.apiMode' } };
   const K = occt.K;
   const getMode = () => { try { return localStorage.getItem(K.MODE) || 'live'; } catch { return 'live'; } };
-  const api = (path) => (getMode() === 'sample' ? '/api/sample' : '/api/live') + path;
+  const api = (p) => (getMode() === 'sample' ? '/api/sample' : '/api/live') + p;
 
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -15,7 +15,6 @@
   const alertsPane = $('#alertsPane');
   const eventsPane = $('#eventsPane');
 
-  // filters – alerts
   const fSeverity   = $('#fSeverity');
   const fStatus     = $('#fStatus');
   const fRule       = $('#fRule');
@@ -23,7 +22,6 @@
   const btnSearchAl = $('#btnSearchAlerts');
   const btnClearAl  = $('#btnClearAlerts');
 
-  // filters – events
   const fEventId    = $('#fEventId');
   const fAccount    = $('#fAccount');
   const fIp         = $('#fIp');
@@ -40,34 +38,28 @@
   const alertsPrev = $('#alertsPrev'), alertsNext = $('#alertsNext'), alertsPageEl = $('#alertsPage');
   const eventsPrev = $('#eventsPrev'), eventsNext = $('#eventsNext'), eventsPageEl = $('#eventsPage');
 
-  /* ---------- utils ---------- */
+  const ACK_KEY = 'occt.ack.ids';
+  const loadAck = () => {
+    try { return new Set((JSON.parse(localStorage.getItem(ACK_KEY) || '[]') || []).map(String)); }
+    catch { return new Set(); }
+  };
+  const saveAck = (s) => { try { localStorage.setItem(ACK_KEY, JSON.stringify([...s])); } catch {} };
+  let ackSet = loadAck();
+
   const fmtTime = (iso) => {
     if (!iso) return '—';
     try { return (window.occt?.formatDateTimeAU ? window.occt.formatDateTimeAU(iso) : new Date(iso).toLocaleString()); }
     catch { return iso; }
   };
-
   const sevClass = (s) => {
     s = (s || '').toLowerCase();
     return ['critical', 'high', 'medium', 'low'].includes(s) ? s : 'low';
   };
-
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-  // Decode Windows HTML entities (&#9; tabs, &#13;&#10; CRLF, etc.)
-  const decodeEntities = (s) => {
-    if (!s) return '';
-    const el = document.createElement('textarea');
-    el.innerHTML = s;
-    return el.value;
-  };
-
+  const decodeEntities = (s) => { if (!s) return ''; const el = document.createElement('textarea'); el.innerHTML = s; return el.value; };
   const squish = (s) => String(s || '').replace(/[\t\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
   const cleanText = (s) => squish(decodeEntities(String(s || '')));
-  const short = (s, n = 220) => {
-    const x = cleanText(s);
-    return (x.length > n) ? (x.slice(0, n - 1) + '…') : x;
-  };
+  const short = (s, n = 220) => { const x = cleanText(s); return (x.length > n) ? (x.slice(0, n - 1) + '…') : x; };
 
   function setModeBadge() {
     const m = getMode().toUpperCase();
@@ -90,12 +82,29 @@
     }
   }
 
-  /* ---------- loaders ---------- */
+  function effectiveStatus(row) {
+    return ackSet.has(String(row.id)) ? 'acknowledged' : (row.status || 'new');
+  }
+
+  async function populateRuleOptions() {
+    if (!fRule || fRule.tagName.toLowerCase() !== 'select') return;
+    const qs = new URLSearchParams();
+    qs.set('limit', '500');
+    qs.set('page', '1');
+    const r = await fetch(api('/detections') + '?' + qs.toString(), { headers: { 'X-OCCT-No-Loader': '1' }, cache: 'no-store' });
+    const j = await r.json().catch(() => ({ items: [] }));
+    const rules = Array.from(new Set((j.items || []).map(x => x.rule_id).filter(Boolean))).sort();
+    const prev = fRule.value || '';
+    fRule.innerHTML = '';
+    const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = 'All'; fRule.appendChild(optAll);
+    rules.forEach(id => { const o = document.createElement('option'); o.value = id; o.textContent = id; fRule.appendChild(o); });
+    fRule.value = prev;
+  }
+
   async function loadAlerts() {
     const qs = new URLSearchParams();
     if (fSeverity?.value) qs.set('severity', fSeverity.value);
-    if (fStatus?.value)   qs.set('status', fStatus.value);
-    if (fRule?.value?.trim()) qs.set('rule_id', fRule.value.trim());
+    if (fRule?.value)     qs.set('rule_id', fRule.value);
     if (fQAlerts?.value?.trim()) qs.set('q', fQAlerts.value.trim());
     qs.set('limit', String(limit));
     qs.set('page', String(alertsPage));
@@ -103,14 +112,26 @@
     const r = await fetch(api('/detections') + '?' + qs.toString(), { headers: { 'X-OCCT-No-Loader': '1' }, cache: 'no-store' });
     const j = await r.json().catch(() => ({ items: [], total: 0 }));
 
-    alertsTotal = j.total || 0;
+    let items = (j.items || []);
+    const ruleVal = (fRule?.value || '').trim().toLowerCase();
+    if (ruleVal) items = items.filter(row => String(row.rule_id || '').toLowerCase() === ruleVal);
+    const st = (fStatus?.value || '').toLowerCase();
+    if (st === 'ack') items = items.filter(row => ackSet.has(String(row.id)));
+    else if (st === 'new') items = items.filter(row => !ackSet.has(String(row.id)));
+
+    alertsTotal = items.length;
     const maxPage = Math.max(1, Math.ceil((alertsTotal || 0) / limit));
     alertsPrev.disabled = alertsPage <= 1;
     alertsNext.disabled = alertsPage >= maxPage;
     alertsPageEl.textContent = `Page ${alertsPage}`;
 
+    if (fRule && fRule.tagName.toLowerCase() === 'select' && fRule.options.length <= 1) {
+      populateRuleOptions();
+    }
+
     alertsTbody.innerHTML = '';
-    (j.items || []).forEach((row) => {
+    items.forEach((row) => {
+      const stxt = effectiveStatus(row);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${esc(fmtTime(row.when))}</td>
@@ -119,8 +140,8 @@
         <td title="${esc(cleanText(row.summary || ''))}">${esc(short(row.summary || '', 120))}</td>
         <td>${esc(cleanText(row.account || '—'))}</td>
         <td>${esc(cleanText(row.ip || '—'))}</td>
-        <td><span class="status">${esc(row.status || 'new')}</span></td>
-        <td class="nowrap"><button class="btn-secondary btn-sm" data-expand>Details</button></td>
+        <td><span class="status">${esc(stxt)}</span></td>
+        <td class="nowrap"><button class="btn-secondary btn-sm" data-expand data-id="${esc(row.id)}">Details</button></td>
       `;
       alertsTbody.appendChild(tr);
 
@@ -134,7 +155,7 @@
         when: row.when,
         rule_id: row.rule_id,
         severity: row.severity,
-        status: row.status,
+        status: stxt,
         account: cleanText(row.account || undefined),
         ip: cleanText(row.ip || undefined),
         evidence: evidObj,
@@ -165,7 +186,7 @@
     eventsTbody.innerHTML = '';
     (j.items || []).forEach((row) => {
       const accountText = cleanText(row.account || row.target || '—');
-      const ipText      = cleanText(row.ip || 'N/A');      // <- N/A when missing
+      const ipText      = cleanText(row.ip || 'N/A');
       const msgFull     = cleanText(row.message || '');
       const msgShort    = short(msgFull, 260);
       const hostText    = cleanText(row.host || '—');
@@ -201,7 +222,6 @@
     });
   }
 
-  /* ---------- table interactions ---------- */
   function wireDelegates() {
     const toggleNextDetail = (tbody, e) => {
       const btn = e.target && e.target.closest('button[data-expand]');
@@ -211,12 +231,20 @@
         ? row.nextElementSibling
         : null;
       if (detail) detail.classList.toggle('hidden');
+      if (tbody === alertsTbody) {
+        const id = btn.getAttribute('data-id');
+        if (id && !ackSet.has(String(id))) {
+          ackSet.add(String(id));
+          saveAck(ackSet);
+          const stEl = row.querySelector('.status');
+          if (stEl) stEl.textContent = 'acknowledged';
+        }
+      }
     };
     alertsTbody.addEventListener('click', (e) => toggleNextDetail(alertsTbody, e));
     eventsTbody.addEventListener('click', (e) => toggleNextDetail(eventsTbody, e));
   }
 
-  /* ---------- tabs ---------- */
   function showAlerts() {
     tabAlerts.classList.add('active'); tabEvents.classList.remove('active');
     alertsPane.classList.remove('hidden'); eventsPane.classList.add('hidden');
@@ -230,12 +258,11 @@
     $('.filters .for-alerts').classList.add('hidden');
   }
 
-  /* ---------- wire UI ---------- */
   tabAlerts.addEventListener('click', showAlerts);
   tabEvents.addEventListener('click', showEvents);
 
-  btnSearchAl.addEventListener('click', () => { alertsPage = 1; loadAlerts(); });
-  btnClearAl.addEventListener('click', () => {
+  btnSearchAl?.addEventListener('click', () => { alertsPage = 1; loadAlerts(); });
+  btnClearAl?.addEventListener('click', () => {
     if (fSeverity) fSeverity.value = '';
     if (fStatus)   fStatus.value = '';
     if (fRule)     fRule.value = '';
@@ -243,8 +270,8 @@
     alertsPage = 1; loadAlerts();
   });
 
-  btnSearchEv.addEventListener('click', () => { eventsPage = 1; loadEvents(); });
-  btnClearEv.addEventListener('click', () => {
+  btnSearchEv?.addEventListener('click', () => { eventsPage = 1; loadEvents(); });
+  btnClearEv?.addEventListener('click', () => {
     if (fEventId) fEventId.value = '';
     if (fAccount) fAccount.value = '';
     if (fIp)      fIp.value = '';
@@ -270,6 +297,7 @@
     setModeBadge();
     wireDelegates();
     await checkHasData();
+    if (fRule && fRule.tagName.toLowerCase() === 'select') await populateRuleOptions();
     await loadAlerts();
     await loadEvents();
   }

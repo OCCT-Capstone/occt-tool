@@ -1,7 +1,7 @@
 // frontend/js/site.js
 // Small global helper used by all pages.
 (function (w, d) {
-  const K = { THEME:'occt.theme', MODE:'occt.apiMode', M0DE:'occt.apiM0de' }; // include legacy key
+  const K = { THEME: 'occt.theme', MODE: 'occt.apiMode', M0DE: 'occt.apiM0de' }; // include legacy key
 
   const get = (k, def) => {
     try { return localStorage.getItem(k) ?? def; } catch { return def; }
@@ -11,7 +11,7 @@
   };
 
   // --- one-time migration: copy legacy key -> new key if present ---
-  (function migrateModeKey(){
+  (function migrateModeKey() {
     try {
       const oldV = localStorage.getItem(K.M0DE);
       const curV = localStorage.getItem(K.MODE);
@@ -34,11 +34,37 @@
     d.documentElement.classList.toggle('theme-dark', get(K.THEME, 'light') === 'dark');
   }
 
-  // Build API path depending on mode
-  // live -> /api/live, sample -> /api/sample
+  // Build API path depending on mode: live -> /api/live, sample -> /api/sample
   function api(path) {
     return getApiModeValue() === 'live' ? `/api/live${path}` : `/api/sample${path}`;
   }
+
+  // ---- Keep --nav-h in sync with real sticky navbar height ----
+  function syncNavHeight() {
+    const nav = d.querySelector('.topbar');
+    if (!nav) return;
+    const setVar = () => {
+      const h = Math.round(nav.getBoundingClientRect().height);
+      d.documentElement.style.setProperty('--nav-h', `${h}px`);
+    };
+    setVar();
+    new ResizeObserver(setVar).observe(nav);
+    w.addEventListener('resize', setVar, { passive: true });
+  }
+
+  // ---- Keep scrollbar-gutter stable only when needed (prevents tiny header shift) ----
+  function updateScrollbarGutter() {
+    const html = d.documentElement;
+    const has = html.scrollHeight > html.clientHeight;
+    html.classList.toggle('has-scrollbar', has);
+  }
+  (function observePageSize() {
+    const ro = new ResizeObserver(updateScrollbarGutter);
+    ro.observe(d.documentElement);
+    if (d.body) ro.observe(d.body);
+    w.addEventListener('resize', updateScrollbarGutter, { passive: true });
+    updateScrollbarGutter();
+  })();
 
   // ---- AU Date/Time helpers (AEST/AEDT) ----
   const AU_TZ = 'Australia/Sydney';
@@ -52,8 +78,8 @@
         hour: '2-digit', minute: '2-digit', hour12: false
       }).replace(',', '');
     } catch {
-      const pad = (n)=> (n<10?'0'+n:n);
-      return `${dte.getFullYear()}-${pad(dte.getMonth()+1)}-${pad(dte.getDate())} ${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${dte.getFullYear()}-${pad(dte.getMonth() + 1)}-${pad(dte.getDate())} ${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
     }
   }
   function formatDateAU(iso) {
@@ -65,8 +91,8 @@
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
     } catch {
-      const pad = (n)=> (n<10?'0'+n:n);
-      return `${pad(dte.getDate())}/${pad(dte.getMonth()+1)}/${dte.getFullYear()}`;
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${pad(dte.getDate())}/${pad(dte.getMonth() + 1)}/${dte.getFullYear()}`;
     }
   }
   function formatTimeAU(iso) {
@@ -78,7 +104,7 @@
         hour: '2-digit', minute: '2-digit', hour12: false
       });
     } catch {
-      const pad = (n)=> (n<10?'0'+n:n);
+      const pad = (n) => (n < 10 ? '0' + n : n);
       return `${pad(dte.getHours())}:${pad(dte.getMinutes())}`;
     }
   }
@@ -92,8 +118,8 @@
       host.className = 'toast-stack';
       // minimal inline fallback in case CSS not loaded yet
       host.style.position = host.style.position || 'fixed';
-      host.style.top = host.style.top || '12px';
-      host.style.right = host.style.right || '12px';
+      host.style.top = host.style.top || '16px';
+      host.style.right = host.style.right || '16px';
       host.style.zIndex = host.style.zIndex || '9999';
       d.body.appendChild(host);
     }
@@ -101,10 +127,10 @@
   }
 
   function escapeHtml(s) {
-    return (s || '').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    return (s || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   }
 
-  function showToast({ title, message, severity='medium', onView=null }) {
+  function showToast({ title, message, severity = 'medium', onView = null }) {
     const host = ensureToastHost();
 
     const el = d.createElement('div');
@@ -144,8 +170,8 @@
     const meta = d.querySelector('meta[name="occt-sse"]');
     if (meta) {
       const v = (meta.getAttribute('content') || '').toLowerCase().trim();
-      if (['off','false','0','no'].includes(v)) return false;
-      if (['on','true','1','yes'].includes(v))  return true;
+      if (['off', 'false', '0', 'no'].includes(v)) return false;
+      if (['on', 'true', '1', 'yes'].includes(v))  return true;
     }
     return true; // SSE enabled everywhere unless explicitly disabled
   }
@@ -171,7 +197,7 @@
     // Store handle globally so we can close it on navigation
     w.__occtSSE = { es, startedAt: Date.now() };
 
-    const connectedAt = w.__occtSSE.startedAt; // drop anything older than page load
+    const connectedAt = w.__occtSSE.startedAt; // drop anything older than the current page view
     const seen = new Set();                    // optional dedupe if ids show up later
 
     es.addEventListener('open', () => {
@@ -231,14 +257,21 @@
   w.occt = {
     K, get, set, api, applyThemeEarly,
     formatDateTimeAU, formatDateAU, formatTimeAU,
-    initSSE, showToast,
-    notifyToast: showToast   // <-- compat for any older code expecting this name
+    initSSE, showToast
   };
+  // Keep the old alias some pages may use
+  w.occt.notifyToast = showToast;
 
-  // run immediately (theme) and start SSE ASAP
+  // run immediately (theme) and then wire height/SSE
   applyThemeEarly();
+  syncNavHeight();
   initSSE();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSSE);
+
+  if (d.readyState === 'loading') {
+    d.addEventListener('DOMContentLoaded', () => {
+      syncNavHeight();
+      initSSE();
+      updateScrollbarGutter();
+    });
   }
 })(window, document);

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Settings</title>
 
-  <!-- Load helpers BEFORE CSS to prevent theme flash -->
   <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 
   <link rel="icon" type="png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
@@ -36,7 +35,6 @@
     <br>
 
     <form id="settingsForm" class="card settings-card">
-      <!-- Appearance -->
       <h2 class="section-title">Appearance</h2>
       <div class="field row">
         <label for="themeDark" class="label">Theme</label>
@@ -49,7 +47,6 @@
 
       <hr class="sep"/>
 
-      <!-- Data -->
       <h2 class="section-title">Data</h2>
       <div class="field">
         <label for="apiMode" class="label">Data source</label>
@@ -60,7 +57,6 @@
         <div class="help">Choose where data comes from.</div>
       </div>
 
-      <!-- Rescan control -->
       <div class="field row">
         <label class="label" for="rescanBtn">Rescan</label>
         <button type="button" id="rescanBtn" class="btn">Rescan</button>
@@ -70,7 +66,6 @@
 
       <hr class="sep"/>
 
-      <!-- Reports -->
       <h2 class="section-title">Reports</h2>
       <div class="field row">
         <label class="label" for="reportBtn">Compliance report</label>
@@ -85,11 +80,9 @@
       <hr class="sep"/>
 
       <div class="actions-row">
-        <!-- Save removed -->
         <button type="button" id="resetBtn" class="btn secondary">Reset</button>
       </div>
 
-      <!-- Logout -->
       <div class="actions-row">
         <button type="button" id="logoutBtn" class="btn danger">Log out</button>
       </div>

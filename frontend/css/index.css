@@ -1,9 +1,9 @@
-/* Dashboard-only visuals: KPIs, donut, bars */
+
 
 .kpi-big{ font-size:3rem; font-weight:700; margin:.2rem 0 .6rem; }
 .kpi-row{ display:flex; justify-content:space-between; padding:.15rem 0; }
 
-/* Donut */
+
 .donut-wrap{ position:relative; width:180px; height:180px; margin:.2rem auto; }
 .donut{ width:100%; height:100%; transform:rotate(-90deg); }
 .donut-track{ fill:none; stroke:#ffe1e1; stroke-width:3.5; }
@@ -13,14 +13,14 @@
 .donut-number{ font-size:2.2rem; font-weight:700; }
 .donut-sub{ color:var(--muted); }
 
-/* Legend */
+
 .legend{ display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; color:var(--muted); }
 .key{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.2rem; vertical-align:middle; }
 .key-green{ background:var(--green); }
 .key-red{ background:var(--red); }
 .spacer{ flex:1; }
 
-/* Bars (grid, aligned with axis) */
+
 .bars{
   display:grid; grid-auto-flow:column; grid-auto-columns:44px; gap:16px;
   align-items:end; height:180px; padding:.5rem .6rem .2rem; border:1px dashed var(--ring); border-radius:12px;
@@ -36,8 +36,7 @@
 }
 .axis-x span{ text-align:center; }
 
-/* Percentage labels overlay */
-.barcol { position: relative; }  /* make column a positioning context */
+.barcol { position: relative; }  
 
 .bar-label {
   position: absolute;
@@ -46,9 +45,9 @@
   font-weight: 700;
   font-size: .9rem;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0,0,0,.45); /* legibility on color */
-  color: #f8fafc; /* near-white for dark theme */
+  text-shadow: 0 1px 2px rgba(0,0,0,.45); 
+  color: #f8fafc; 
 }
 
-.bar-label.top { top: 4px; }          /* sits over the green area */
-.bar-label.bottom { bottom: 4px; }    /* sits above the base/red area */
+.bar-label.top { top: 4px; }         
+.bar-label.bottom { bottom: 4px; } 

@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Meta & head -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OCCT – Dashboard</title>
 
-  <!-- Global site helpers (exposes window.occt.api) -->
   <script src="{{ url_for('static', filename='js/site.js') }}"></script>
 
-  <!-- Favicon & global styles (served by Flask static) -->
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/occt-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-overrides.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -17,7 +14,6 @@
 </head>
 
 <body class="dash-body">
-  <!-- NAVBAR -->
   <nav class="topbar">
     <div class="brand">OCCT</div>
     <ul class="navlinks center">
@@ -37,32 +33,27 @@
 
   <main class="container">
 
-    <!-- ===== KPI Row (3 cards) ===== -->
     <section class="grid grid-3">
-      <!-- Compliance Status (Donut) -->
       <div class="card">
         <h3>Compliance Status</h3>
 
-        <!-- Donut chart (SVG) -->
+
         <div class="donut-wrap">
           <svg class="donut" viewBox="0 0 36 36" aria-label="Donut chart">
-            <!-- Track -->
+
             <path
               class="donut-track"
               d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"
             />
-            <!-- Value (dasharray updated via JS) -->
             <path
               id="donut-value"
               class="donut-value"
               stroke-dasharray="0, 100"
               d="M18 2 a 16 16 0 1 1 0 32 a 16 16 0 1 1 0 -32"
             />
-            <!-- Cap (visual end point) -->
             <circle class="donut-cap" cx="18" cy="2" r="1.1"></circle>
           </svg>
 
-          <!-- Donut center content -->
           <div class="donut-center">
             <div class="donut-number" id="nonCompliantPct">—</div>
             <div class="donut-sub">Compliance</div>
@@ -70,7 +61,6 @@
         </div>
       </div>
 
-      <!-- Audit Checks (numeric KPIs) -->
       <div class="card">
         <h3>Audit Checks</h3>
         <div class="kpi-big" id="kpiTotal">—</div>
@@ -82,7 +72,6 @@
         </div>
       </div>
 
-      <!-- Weighted Compliance (donut) -->
       <div class="card">
         <h3>Weighted Compliance Score</h3>
         <div class="donut-wrap">
@@ -95,34 +84,26 @@
       </div>
     </section>
 
-    <!-- ===== Charts / Log Row (2 cards) ===== -->
     <section class="grid grid-2">
-      <!-- Compliance Over Time (bars) -->
       <div class="card">
         <h3>Compliance Over Time</h3>
 
-        <!-- Simple legend -->
         <div class="legend">
           <span class="key key-green"></span> Compliant
           <span class="spacer"></span>
           <span class="key key-red"></span> Non-Compliant
         </div>
 
-        <!-- Bars placeholder; JS injects columns -->
         <div class="bars" id="barChart"></div>
 
-        <!-- X-axis labels (populated from data) -->
         <div class="axis-x" id="axisX"></div>
       </div>
 
-      <!-- Audit Log (preview) -->
       <div class="card">
         <h3>Audit Log</h3>
 
-        <!-- Container JS will fill -->
         <div class="table" id="auditPreview"></div>
 
-        <!-- Link to full audit page -->
         <a class="link" href="/audit">See all</a>
       </div>
     </section>

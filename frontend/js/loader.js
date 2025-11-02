@@ -1,9 +1,4 @@
 // frontend/js/loader.js
-// Global loader overlay for /api/* requests.
-// - Safe in <head> or end-of-<body>
-// - No external CSS edits; injects its own scoped, theme-aware styles
-// - Shows after 200ms to avoid flicker; hides when all API calls settle
-// - Opt-out per request with header: 'X-OCCT-No-Loader': '1'
 
 (() => {
   const OVERLAY_ID = 'occt-loading-overlay';
@@ -11,7 +6,6 @@
   let inflight = 0;
   let showTimer = null;
 
-  // Inject styles immediately (head exists even in <head> execution)
   (function injectStyle() {
     if (document.getElementById(STYLE_ID)) return;
     const css = `
@@ -77,7 +71,7 @@
     (document.head || document.documentElement).appendChild(style);
   })();
 
-  // Create overlay, but only when <body> exists
+
   function ensureOverlay(cb) {
     const existing = document.getElementById(OVERLAY_ID);
     if (existing) { if (cb) cb(existing); return existing; }
@@ -137,12 +131,10 @@
         .catch(err => { throw err; })
         .finally(() => { if (isApi && !noLoader) stop(); });
     } catch {
-      // if URL parsing throws (very old browsers), just call through
       return origFetch(resource, init);
     }
   };
 
-  // optional: expose simple controls
   window.occt = window.occt || {};
   window.occt.loading = { show: showOverlay, hide: hideOverlay, inflight: () => inflight };
 })();

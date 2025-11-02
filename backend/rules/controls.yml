@@ -84,7 +84,6 @@
     or review inbound allow set for least privilege. Example:
     `New-NetFirewallRule -DisplayName 'Block Legacy SMB' -Direction Inbound -Action Block -Protocol TCP -LocalPort 139,445 -Profile Domain,Private,Public`.
 
-# ADMIN GROUP BASELINE (Account)
 - id: AC-001
   title: "Administrators group members approved"
   category: Account
@@ -97,7 +96,6 @@
     Review and remove unapproved members:
     Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member 'MEMBER_NAME'.
 
-# SECURITY LOG RETENTION/SIZE (Security)
 - id: AU-001
   title: "Security log retained or sized appropriately"
   category: Security
@@ -110,7 +108,6 @@
     Enable retention: wevtutil sl Security /rt:true
     or increase size: wevtutil sl Security /ms:134217728
 
-# TIME SERVICE (System)
 - id: AU-010
   title: "Time service is healthy and recently synced"
   category: System
@@ -124,7 +121,6 @@
     w32tm /config /syncfromflags:manual /manualpeerlist:'time.windows.com,0x8'
     w32tm /resync
 
-# AUDIT LOG FILE PROTECTION (Security)
 - id: AU-003
   title: "Security.evtx write access restricted"
   category: Security
@@ -137,7 +133,6 @@
     icacls %SystemRoot%\System32\winevt\Logs\Security.evtx /inheritance:r
     icacls ... /grant:r "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" "NT SERVICE/EventLog:(M)"
 
-# PASSWORD: COMPLEXITY/LENGTH/AGE (Account)
 - id: PW-004
   title: "Password complexity and length/age"
   category: Account
@@ -151,7 +146,6 @@
     Password must meet complexity requirements = Enabled;
     Minimum password length ≥ 8; Maximum password age ≤ 365.
 
-# SECURITY EVENTS HAVE KEY FIELDS (Security)
 - id: AU-012
   title: "Security events carry key fields"
   category: Security
@@ -163,7 +157,6 @@
   remediation: >
     Verify audit policy and Windows Event Log service; ensure no filtering drops key fields.
 
-# BUILT-IN ACCOUNTS (Account)
 - id: AC-003
   title: "Built-in Administrator (RID 500) disabled"
   category: Account
@@ -208,7 +201,6 @@
   remediation: >
     Set via Local Security Policy or GPO: Account lockout duration ≥15; Reset account lockout counter after ≤15.
 
-# --- AUDIT POLICY (exactly three controls) ---
 - id: AU-020
   title: "Audit policy: Logon events (Success & Failure)"
   category: Security
@@ -242,7 +234,6 @@
   remediation: >
     auditpol /set /subcategory:"Audit Policy Change" /success:enable /failure:enable
 
-# --- AUDIT POLICY ADD-ON ---
 - id: AU-023
   title: "Audit policy: Account Lockout (Success)"
   category: Security
@@ -265,7 +256,6 @@
   remediation: >
     Enable Advanced Audit Policy via GPO and set required subcategories.
 
-# --- SYSTEM TIME ADD-ON ---
 - id: AU-011
   title: "Time service: NTP peers configured"
   category: System
@@ -278,7 +268,6 @@
     w32tm /config /syncfromflags:manual /manualpeerlist:'time.windows.com,0x8'
     w32tm /config /update & w32tm /resync
 
-# --- ADMINS STRICT VARIANT ---
 - id: AC-002
   title: "Administrators group: strict baseline"
   category: Account
@@ -290,7 +279,6 @@
   remediation: >
     Get-LocalGroupMember Administrators | Remove-LocalGroupMember -Member 'MEMBER_NAME'.
 
-# AUDIT STORAGE FAILURE ACTION (Security)
 - id: AU-002
   title: "Audit: shutdown if unable to log security audits"
   category: Security
